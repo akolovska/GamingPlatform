@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GamingPlatform.Domain\GamingPlatform.Domain.csproj" />
     <ProjectReference Include="..\GamingPlatform.Repository\GamingPlatform.Repository.csproj" />
+    <ProjectReference Include="..\GamingPlatform.Service\GamingPlatform.Service.csproj" />
   </ItemGroup>
 
 </Project>

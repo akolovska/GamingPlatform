@@ -14,8 +14,8 @@ namespace GamingPlatform.Domain.Models
         public DateTime? DateJoined { get; set; }
         public string? Email { get; set; }
         public ICollection<HighScore> HighScores { get; set; }
-        public ICollection<GamerGame> GamerGames { get; set; }
-        public ICollection<GamerFriend> Friends { get; set; }
-        public ICollection<GamerFriend> FriendOf { get; set; }
+        public ICollection<Library> Library { get; set; }
+        public ICollection<Wishlist> Wishlist { get; set; }
+        public ICollection<Gamer> Friends { get; set; }
     }
 }

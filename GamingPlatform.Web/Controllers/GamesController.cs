@@ -7,26 +7,27 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
+using GamingPlatform.Service.Interfaces;
 
 namespace GamingPlatform.Web.Controllers
 {
     public class GamesController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IGameService _gameService;
 
-        public GamesController(ApplicationDbContext context)
+        public GamesController(IGameService gameService)
         {
-            _context = context;
+            _gameService  = gameService;
         }
 
         // GET: Games
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            return View(await _context.Games.ToListAsync());
+            return View();
         }
 
         // GET: Games/Details/5
-        public async Task<IActionResult> Details(Guid? id)
+        public IActionResult Details(Guid? id)
         {
             if (id == null)
             {

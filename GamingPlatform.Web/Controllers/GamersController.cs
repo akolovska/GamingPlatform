@@ -7,34 +7,34 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
+using GamingPlatform.Service.Interfaces;
 
 namespace GamingPlatform.Web.Controllers
 {
     public class GamersController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IGamerService _gamerService;
 
-        public GamersController(ApplicationDbContext context)
+        public GamersController(IGamerService gamerService)
         {
-            _context = context;
+            _gamerService = gamerService;
         }
 
         // GET: Gamers
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            return View(await _context.Gamers.ToListAsync());
+            return View(_gamerService.GetAllGamers());
         }
 
         // GET: Gamers/Details/5
-        public async Task<IActionResult> Details(Guid? id)
+        public IActionResult Details(Guid id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var gamer = await _context.Gamers
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var gamer = _gamerService.GetGamerById(id);
             if (gamer == null)
             {
                 return NotFound();
@@ -59,22 +59,21 @@ namespace GamingPlatform.Web.Controllers
             if (ModelState.IsValid)
             {
                 gamer.Id = Guid.NewGuid();
-                _context.Add(gamer);
-                await _context.SaveChangesAsync();
+               _gamerService.AddGamer(gamer);
                 return RedirectToAction(nameof(Index));
             }
             return View(gamer);
         }
 
         // GET: Gamers/Edit/5
-        public async Task<IActionResult> Edit(Guid? id)
+        public IActionResult Edit(Guid id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var gamer = await _context.Gamers.FindAsync(id);
+            var gamer = _gamerService.GetGamerById(id);
             if (gamer == null)
             {
                 return NotFound();
@@ -118,15 +117,14 @@ namespace GamingPlatform.Web.Controllers
         }
 
         // GET: Gamers/Delete/5
-        public async Task<IActionResult> Delete(Guid? id)
+        public IActionResult Delete(Guid id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var gamer = await _context.Gamers
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var gamer = _gamerService.GetGamerById(id);
             if (gamer == null)
             {
                 return NotFound();
@@ -140,19 +138,18 @@ namespace GamingPlatform.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
-            var gamer = await _context.Gamers.FindAsync(id);
+            var gamer = _gamerService.GetGamerById(id);
             if (gamer != null)
             {
-                _context.Gamers.Remove(gamer);
+                _gamerService.DeleteGamer(id);
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool GamerExists(Guid id)
         {
-            return _context.Gamers.Any(e => e.Id == id);
+            return _gamerService.GetAllGamers().Any(e => e.Id == id);
         }
     }
 }

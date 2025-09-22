@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GamingPlatform.Domain.Models
 {
-    public class GamerGame : BaseEntity
+    public class Library : BaseEntity
     {
         public Guid? GamerId { get; set; }
         public Gamer? Gamer { get; set; }

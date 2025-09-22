@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GamingPlatform.Domain.Models;
 using Microsoft.AspNetCore.Identity;
 
 namespace GamingPlatform.Domain.Identity
@@ -14,5 +15,7 @@ namespace GamingPlatform.Domain.Identity
         public DateTime? DateOfBirth { get; set; }
         public string? ProfilePictureUrl { get; set; }
         public string? Bio { get; set; }
+        public Wishlist Wishlist { get; set; }
+        public Library Library { get; set; }
     }
 }

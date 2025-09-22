@@ -10,23 +10,23 @@ using GamingPlatform.Repository.Data;
 
 namespace GamingPlatform.Web.Controllers
 {
-    public class GamerFriendsController : Controller
+    public class LibrariesController : Controller
     {
         private readonly ApplicationDbContext _context;
 
-        public GamerFriendsController(ApplicationDbContext context)
+        public LibrariesController(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        // GET: GamerFriends
+        // GET: Libraries
         public async Task<IActionResult> Index()
         {
-            var applicationDbContext = _context.GamerFriends.Include(g => g.Friend).Include(g => g.Gamer);
+            var applicationDbContext = _context.GamerGames.Include(l => l.Game).Include(l => l.Gamer);
             return View(await applicationDbContext.ToListAsync());
         }
 
-        // GET: GamerFriends/Details/5
+        // GET: Libraries/Details/5
         public async Task<IActionResult> Details(Guid? id)
         {
             if (id == null)
@@ -34,45 +34,46 @@ namespace GamingPlatform.Web.Controllers
                 return NotFound();
             }
 
-            var gamerFriend = await _context.GamerFriends
-                .Include(g => g.Friend)
-                .Include(g => g.Gamer)
-                .FirstOrDefaultAsync(m => m.GamerId == id);
-            if (gamerFriend == null)
+            var library = await _context.GamerGames
+                .Include(l => l.Game)
+                .Include(l => l.Gamer)
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (library == null)
             {
                 return NotFound();
             }
 
-            return View(gamerFriend);
+            return View(library);
         }
 
-        // GET: GamerFriends/Create
+        // GET: Libraries/Create
         public IActionResult Create()
         {
-            ViewData["FriendId"] = new SelectList(_context.Gamers, "Id", "Id");
+            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id");
             ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id");
             return View();
         }
 
-        // POST: GamerFriends/Create
+        // POST: Libraries/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("GamerId,FriendId,AddedOn,Id")] GamerFriend gamerFriend)
+        public async Task<IActionResult> Create([Bind("GamerId,GameId,DateAdded,PlayTimeHours,Id")] Library library)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(gamerFriend);
+                library.Id = Guid.NewGuid();
+                _context.Add(library);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["FriendId"] = new SelectList(_context.Gamers, "Id", "Id", gamerFriend.FriendId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", gamerFriend.GamerId);
-            return View(gamerFriend);
+            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", library.GameId);
+            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", library.GamerId);
+            return View(library);
         }
 
-        // GET: GamerFriends/Edit/5
+        // GET: Libraries/Edit/5
         public async Task<IActionResult> Edit(Guid? id)
         {
             if (id == null)
@@ -80,24 +81,24 @@ namespace GamingPlatform.Web.Controllers
                 return NotFound();
             }
 
-            var gamerFriend = await _context.GamerFriends.FindAsync(id);
-            if (gamerFriend == null)
+            var library = await _context.GamerGames.FindAsync(id);
+            if (library == null)
             {
                 return NotFound();
             }
-            ViewData["FriendId"] = new SelectList(_context.Gamers, "Id", "Id", gamerFriend.FriendId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", gamerFriend.GamerId);
-            return View(gamerFriend);
+            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", library.GameId);
+            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", library.GamerId);
+            return View(library);
         }
 
-        // POST: GamerFriends/Edit/5
+        // POST: Libraries/Edit/5
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid? id, [Bind("GamerId,FriendId,AddedOn,Id")] GamerFriend gamerFriend)
+        public async Task<IActionResult> Edit(Guid id, [Bind("GamerId,GameId,DateAdded,PlayTimeHours,Id")] Library library)
         {
-            if (id != gamerFriend.GamerId)
+            if (id != library.Id)
             {
                 return NotFound();
             }
@@ -106,12 +107,12 @@ namespace GamingPlatform.Web.Controllers
             {
                 try
                 {
-                    _context.Update(gamerFriend);
+                    _context.Update(library);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!GamerFriendExists(gamerFriend.GamerId))
+                    if (!LibraryExists(library.Id))
                     {
                         return NotFound();
                     }
@@ -122,12 +123,12 @@ namespace GamingPlatform.Web.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["FriendId"] = new SelectList(_context.Gamers, "Id", "Id", gamerFriend.FriendId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", gamerFriend.GamerId);
-            return View(gamerFriend);
+            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", library.GameId);
+            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", library.GamerId);
+            return View(library);
         }
 
-        // GET: GamerFriends/Delete/5
+        // GET: Libraries/Delete/5
         public async Task<IActionResult> Delete(Guid? id)
         {
             if (id == null)
@@ -135,36 +136,36 @@ namespace GamingPlatform.Web.Controllers
                 return NotFound();
             }
 
-            var gamerFriend = await _context.GamerFriends
-                .Include(g => g.Friend)
-                .Include(g => g.Gamer)
-                .FirstOrDefaultAsync(m => m.GamerId == id);
-            if (gamerFriend == null)
+            var library = await _context.GamerGames
+                .Include(l => l.Game)
+                .Include(l => l.Gamer)
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (library == null)
             {
                 return NotFound();
             }
 
-            return View(gamerFriend);
+            return View(library);
         }
 
-        // POST: GamerFriends/Delete/5
+        // POST: Libraries/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(Guid? id)
+        public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
-            var gamerFriend = await _context.GamerFriends.FindAsync(id);
-            if (gamerFriend != null)
+            var library = await _context.GamerGames.FindAsync(id);
+            if (library != null)
             {
-                _context.GamerFriends.Remove(gamerFriend);
+                _context.GamerGames.Remove(library);
             }
 
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool GamerFriendExists(Guid? id)
+        private bool LibraryExists(Guid id)
         {
-            return _context.GamerFriends.Any(e => e.GamerId == id);
+            return _context.GamerGames.Any(e => e.Id == id);
         }
     }
 }

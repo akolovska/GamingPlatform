@@ -10,7 +10,7 @@ namespace GamingPlatform.Domain.Models
     {
         public Guid? GamerId { get; set; }
         public Gamer? Gamer { get; set; }
-        public Guid GameId { get; set; }
+        public Guid? GameId { get; set; }
         public Game? Game { get; set; }
 
     }

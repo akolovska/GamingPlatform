@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using GamingPlatform.Domain.Identity;
+using GamingPlatform.Domain.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -128,6 +129,8 @@ namespace GamingPlatform.Web.Areas.Identity.Pages.Account
                 user.FirstName = Input.FirstName;
                 user.LastName = Input.LastName;
                 user.DateOfBirth = Input.DateOfBirth;
+                user.Wishlist = new Wishlist();
+                user.Library = new Library();
                 if (Input.ProfilePictureUrl != null && Input.ProfilePictureUrl.Length > 0)
                 {
                     using (var memoryStream = new MemoryStream())

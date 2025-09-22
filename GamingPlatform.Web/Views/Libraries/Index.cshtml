@@ -1,4 +1,4 @@
-﻿@model IEnumerable<GamingPlatform.Domain.Models.GamerFriend>
+﻿@model IEnumerable<GamingPlatform.Domain.Models.Library>
 
 @{
     ViewData["Title"] = "Index";
@@ -17,13 +17,13 @@
                 @Html.DisplayNameFor(model => model.Gamer)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Friend)
+                @Html.DisplayNameFor(model => model.Game)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.AddedOn)
+                @Html.DisplayNameFor(model => model.DateAdded)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Id)
+                @Html.DisplayNameFor(model => model.PlayTimeHours)
             </th>
             <th></th>
         </tr>
@@ -35,18 +35,18 @@
                 @Html.DisplayFor(modelItem => item.Gamer.Id)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Friend.Id)
+                @Html.DisplayFor(modelItem => item.Game.Id)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.AddedOn)
+                @Html.DisplayFor(modelItem => item.DateAdded)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Id)
+                @Html.DisplayFor(modelItem => item.PlayTimeHours)
             </td>
             <td>
-                @Html.ActionLink("Edit", "Edit", new { /* id=item.PrimaryKey */ }) |
-                @Html.ActionLink("Details", "Details", new { /* id=item.PrimaryKey */ }) |
-                @Html.ActionLink("Delete", "Delete", new { /* id=item.PrimaryKey */ })
+                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
             </td>
         </tr>
 }
