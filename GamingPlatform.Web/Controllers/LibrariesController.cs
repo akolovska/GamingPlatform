@@ -7,37 +7,40 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
+using GamingPlatform.Service.Interfaces;
+using System.Security.Claims;
 
 namespace GamingPlatform.Web.Controllers
 {
     public class LibrariesController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ILibraryService _libraryService;
+        private readonly IGameService _gameService;
+        private readonly IGamerService _gamerService;
 
-        public LibrariesController(ApplicationDbContext context)
+        public LibrariesController(ILibraryService libraryService, IGameService gameService, IGamerService gamerService)
         {
-            _context = context;
+            _libraryService = libraryService;
+            _gameService = gameService;
+            _gamerService = gamerService;
         }
 
         // GET: Libraries
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            var applicationDbContext = _context.GamerGames.Include(l => l.Game).Include(l => l.Gamer);
-            return View(await applicationDbContext.ToListAsync());
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return View(_libraryService.GetAllLibrariesByUser(Guid.Parse(userId)));
         }
 
         // GET: Libraries/Details/5
-        public async Task<IActionResult> Details(Guid? id)
+        public IActionResult Details(Guid id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var library = await _context.GamerGames
-                .Include(l => l.Game)
-                .Include(l => l.Gamer)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var library = _libraryService.GetLibraryById(id);
             if (library == null)
             {
                 return NotFound();
@@ -49,8 +52,8 @@ namespace GamingPlatform.Web.Controllers
         // GET: Libraries/Create
         public IActionResult Create()
         {
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id");
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id");
+            ViewData["GameId"] = new SelectList(_gameService.GetAllGames(), "Id", "Id");
+            ViewData["GamerId"] = new SelectList(_gamerService.GetAllGamers(), "Id", "Id");
             return View();
         }
 
@@ -64,17 +67,16 @@ namespace GamingPlatform.Web.Controllers
             if (ModelState.IsValid)
             {
                 library.Id = Guid.NewGuid();
-                _context.Add(library);
-                await _context.SaveChangesAsync();
+                _libraryService.AddLibrary(library);
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", library.GameId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", library.GamerId);
+            ViewData["GameId"] = new SelectList(_gameService.GetAllGames(), "Id", "Id");
+            ViewData["GamerId"] = new SelectList(_gamerService.GetAllGamers(), "Id", "Id");
             return View(library);
         }
 
         // GET: Libraries/Edit/5
-        public async Task<IActionResult> Edit(Guid? id)
+        public IActionResult Edit(Guid? id)
         {
             if (id == null)
             {
@@ -86,8 +88,8 @@ namespace GamingPlatform.Web.Controllers
             {
                 return NotFound();
             }
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", library.GameId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", library.GamerId);
+            ViewData["GameId"] = new SelectList(_gameService.GetAllGames(), "Id", "Id");
+            ViewData["GamerId"] = new SelectList(_gamerService.GetAllGamers(), "Id", "Id");
             return View(library);
         }
 

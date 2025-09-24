@@ -27,15 +27,14 @@ namespace GamingPlatform.Web.Controllers
         }
 
         // GET: Games/Details/5
-        public IActionResult Details(Guid? id)
+        public IActionResult Details(Guid id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var game = await _context.Games
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var game = _gameService.GetGameById(id);
             if (game == null)
             {
                 return NotFound();
@@ -60,22 +59,21 @@ namespace GamingPlatform.Web.Controllers
             if (ModelState.IsValid)
             {
                 game.Id = Guid.NewGuid();
-                _context.Add(game);
-                await _context.SaveChangesAsync();
+                _gameService.AddGame(game);
                 return RedirectToAction(nameof(Index));
             }
             return View(game);
         }
 
         // GET: Games/Edit/5
-        public async Task<IActionResult> Edit(Guid? id)
+        public IActionResult Edit(Guid id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var game = await _context.Games.FindAsync(id);
+            var game = _gameService.GetGameById(id);
             if (game == null)
             {
                 return NotFound();
@@ -99,8 +97,7 @@ namespace GamingPlatform.Web.Controllers
             {
                 try
                 {
-                    _context.Update(game);
-                    await _context.SaveChangesAsync();
+                    _gameService.UpdateGame(game);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -119,15 +116,14 @@ namespace GamingPlatform.Web.Controllers
         }
 
         // GET: Games/Delete/5
-        public async Task<IActionResult> Delete(Guid? id)
+        public IActionResult Delete(Guid id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var game = await _context.Games
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var game = _gameService.GetGameById(id);
             if (game == null)
             {
                 return NotFound();
@@ -141,19 +137,18 @@ namespace GamingPlatform.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
-            var game = await _context.Games.FindAsync(id);
+            var game = _gameService.GetGameById(id);
             if (game != null)
             {
-                _context.Games.Remove(game);
+                _gameService.DeleteGame(id);
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool GameExists(Guid id)
         {
-            return _context.Games.Any(e => e.Id == id);
+            return _gameService.GetAllGames().Any(e => e.Id == id);
         }
     }
 }

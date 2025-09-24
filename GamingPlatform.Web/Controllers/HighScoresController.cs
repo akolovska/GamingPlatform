@@ -7,37 +7,38 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
+using GamingPlatform.Service.Interfaces;
 
 namespace GamingPlatform.Web.Controllers
 {
     public class HighScoresController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IHighScoreService _highScoreService;
+        private readonly IGameService _gameService;
+        private readonly IGamerService _gamerService;
 
-        public HighScoresController(ApplicationDbContext context)
+        public HighScoresController(IHighScoreService highScoreService, IGameService gameService, IGamerService gamerService)
         {
-            _context = context;
+            _highScoreService = highScoreService;
+            _gameService = gameService;
+            _gamerService = gamerService;
         }
 
         // GET: HighScores
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            var applicationDbContext = _context.HighScores.Include(h => h.Game).Include(h => h.Gamer);
-            return View(await applicationDbContext.ToListAsync());
+            return View(_highScoreService.GetAllHighScores());
         }
 
         // GET: HighScores/Details/5
-        public async Task<IActionResult> Details(Guid? id)
+        public IActionResult Details(Guid id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var highScore = await _context.HighScores
-                .Include(h => h.Game)
-                .Include(h => h.Gamer)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var highScore = _highScoreService.getHighScoreById(id);
             if (highScore == null)
             {
                 return NotFound();
@@ -49,8 +50,8 @@ namespace GamingPlatform.Web.Controllers
         // GET: HighScores/Create
         public IActionResult Create()
         {
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id");
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id");
+            ViewData["GameId"] = new SelectList(_gameService.GetAllGames(), "Id", "Id");
+            ViewData["GamerId"] = new SelectList(_gamerService.GetAllGamers(), "Id", "Id");
             return View();
         }
 
@@ -64,30 +65,29 @@ namespace GamingPlatform.Web.Controllers
             if (ModelState.IsValid)
             {
                 highScore.Id = Guid.NewGuid();
-                _context.Add(highScore);
-                await _context.SaveChangesAsync();
+                _highScoreService.AddHighScore(highScore);
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", highScore.GameId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", highScore.GamerId);
+            ViewData["GameId"] = new SelectList(_gameService.GetAllGames(), "Id", "Id");
+            ViewData["GamerId"] = new SelectList(_gamerService.GetAllGamers(), "Id", "Id");
             return View(highScore);
         }
 
         // GET: HighScores/Edit/5
-        public async Task<IActionResult> Edit(Guid? id)
+        public IActionResult Edit(Guid id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var highScore = await _context.HighScores.FindAsync(id);
+            var highScore = _highScoreService.getHighScoreById(id);
             if (highScore == null)
             {
                 return NotFound();
             }
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", highScore.GameId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", highScore.GamerId);
+            ViewData["GameId"] = new SelectList(_gameService.GetAllGames(), "Id", "Id");
+            ViewData["GamerId"] = new SelectList(_gamerService.GetAllGamers(), "Id", "Id");
             return View(highScore);
         }
 
@@ -107,8 +107,7 @@ namespace GamingPlatform.Web.Controllers
             {
                 try
                 {
-                    _context.Update(highScore);
-                    await _context.SaveChangesAsync();
+                    _highScoreService.UpdateHighScore(highScore);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -123,23 +122,20 @@ namespace GamingPlatform.Web.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", highScore.GameId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", highScore.GamerId);
+            ViewData["GameId"] = new SelectList(_gameService.GetAllGames(), "Id", "Id");
+            ViewData["GamerId"] = new SelectList(_gamerService.GetAllGamers(), "Id", "Id");
             return View(highScore);
         }
 
         // GET: HighScores/Delete/5
-        public async Task<IActionResult> Delete(Guid? id)
+        public IActionResult Delete(Guid? id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var highScore = await _context.HighScores
-                .Include(h => h.Game)
-                .Include(h => h.Gamer)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var highScore = _highScoreService.getHighScoreById(id.Value);
             if (highScore == null)
             {
                 return NotFound();
@@ -153,19 +149,18 @@ namespace GamingPlatform.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
-            var highScore = await _context.HighScores.FindAsync(id);
+            var highScore = _highScoreService.getHighScoreById(id);
             if (highScore != null)
             {
-                _context.HighScores.Remove(highScore);
+                _highScoreService.DeleteHighScore(id);
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool HighScoreExists(Guid id)
         {
-            return _context.HighScores.Any(e => e.Id == id);
+            return _highScoreService.getHighScoreById(id) != null;
         }
     }
 }
