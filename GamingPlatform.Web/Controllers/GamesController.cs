@@ -54,7 +54,7 @@ namespace GamingPlatform.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Title,Description,Genre,ReleaseDate,Price,Platform,CoverImageUrl,Id")] Game game)
+        public IActionResult Create([Bind("Title,Description,Genre,ReleaseDate,Price,Platform,CoverImageUrl,Id")] Game game)
         {
             if (ModelState.IsValid)
             {
@@ -86,7 +86,7 @@ namespace GamingPlatform.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("Title,Description,Genre,ReleaseDate,Price,Platform,CoverImageUrl,Id")] Game game)
+        public IActionResult Edit(Guid id, [Bind("Title,Description,Genre,ReleaseDate,Price,Platform,CoverImageUrl,Id")] Game game)
         {
             if (id != game.Id)
             {
@@ -135,7 +135,7 @@ namespace GamingPlatform.Web.Controllers
         // POST: Games/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(Guid id)
+        public IActionResult DeleteConfirmed(Guid id)
         {
             var game = _gameService.GetGameById(id);
             if (game != null)

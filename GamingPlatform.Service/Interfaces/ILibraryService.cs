@@ -11,8 +11,8 @@ namespace GamingPlatform.Service.Interfaces
     {
         void AddLibrary(Library library);
         // void AddLibrary(Guid gamerId, Guid gameId);
-        void DeleteLibrary(Guid gamerId, Guid gameId);
-        void UpdateLibrary(Guid gamerId, Guid gameId);
+        void DeleteLibrary(Guid libraryId);
+        void UpdateLibrary(Library library);
         // Library GetLibrary (Guid gamerId, Guid gameId);
         Library GetLibraryById(Guid id);
         List<Game> GetAllGamesFromLibrary(Guid gamerId);

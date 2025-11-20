@@ -36,17 +36,17 @@ namespace GamingPlatform.Service.Implementations
             _libraryRepository.Insert(library);
         }
 
-        public void DeleteLibrary(Guid gamerId, Guid gameId)
+        public void DeleteLibrary(Guid libraryId)
         {
-            Library library = GetLibrary(gamerId, gameId);
+            Library library = GetLibraryById(libraryId);
             _libraryRepository.Delete(library);
         }
 
-        public void UpdateLibrary(Guid gamerId, Guid gameId)
+        public void UpdateLibrary(Library library)
         {
-            Library library = GetLibrary(gamerId, gameId);
             _libraryRepository.Update(library);
         }
+
 
         public Library GetLibrary(Guid gamerId, Guid gameId)
         {

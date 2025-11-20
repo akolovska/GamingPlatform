@@ -1,53 +1,30 @@
-﻿@model IEnumerable<GamingPlatform.Domain.Models.Library>
-
+﻿@model IEnumerable<GamingPlatform.Domain.Models.DTO.LibraryDTO>
 @{
-    ViewData["Title"] = "Index";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+	ViewData["Title"] = "Index";
+	Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>
-    Library for @Html.DisplayNameFor(model => model.GamerId)
-</h1>
-
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
+<h1>My Library</h1>
 <table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Gamer)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Game)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.DateAdded)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.PlayTimeHours)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Game.Id)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DateAdded)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.PlayTimeHours)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
+	<thead>
+	<tr>
+		<th>Game</th>
+		<th>Date Added</th>
+		<th>Play Time (Hours)</th>
+		<th></th>
+	</tr>
+	</thead>
+	<tbody>
+	@foreach(var item in Model)
+	{
+		<tr>
+			<td>@item.GameName</td>
+			<td>@item.DateAdded</td>
+			<td>@item.PlayTimeHours</td>
+			
+		<td><a asp-action="Edit" asp-route-id="@item.Id">Edit</a></td>
+		<td><a asp-action="Details" asp-route-id="@item.Id">Details</a> |</td>
+		</tr>
+	}
+	</tbody>
 </table>

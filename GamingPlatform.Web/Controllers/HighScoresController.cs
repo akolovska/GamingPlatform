@@ -60,7 +60,7 @@ namespace GamingPlatform.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("GamerId,GameId,Score,DateAchieved,Id")] HighScore highScore)
+        public IActionResult Create([Bind("GamerId,GameId,Score,DateAchieved,Id")] HighScore highScore)
         {
             if (ModelState.IsValid)
             {
@@ -96,7 +96,7 @@ namespace GamingPlatform.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("GamerId,GameId,Score,DateAchieved,Id")] HighScore highScore)
+        public IActionResult Edit(Guid id, [Bind("GamerId,GameId,Score,DateAchieved,Id")] HighScore highScore)
         {
             if (id != highScore.Id)
             {
@@ -147,7 +147,7 @@ namespace GamingPlatform.Web.Controllers
         // POST: HighScores/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(Guid id)
+        public IActionResult DeleteConfirmed(Guid id)
         {
             var highScore = _highScoreService.getHighScoreById(id);
             if (highScore != null)

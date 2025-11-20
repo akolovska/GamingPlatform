@@ -1,14 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using GamingPlatform.Domain.Models;
+using GamingPlatform.Domain.Models.DTO;
+using GamingPlatform.Repository.Data;
+using GamingPlatform.Service.Interfaces;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using GamingPlatform.Domain.Models;
-using GamingPlatform.Repository.Data;
-using GamingPlatform.Service.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace GamingPlatform.Web.Controllers
 {
@@ -29,8 +31,20 @@ namespace GamingPlatform.Web.Controllers
         public IActionResult Index()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return View(_libraryService.GetAllLibrariesByUser(Guid.Parse(userId)));
+
+            var libraryEntries = _libraryService.GetAllLibrariesByUser(Guid.Parse(userId));
+
+            var libraryDtos = libraryEntries.Select(l => new LibraryDTO()
+            {
+                Id = l.Id,
+                GameName = l.Game.Title,
+                DateAdded = l.DateAdded,
+                PlayTimeHours = l.PlayTimeHours
+            });
+
+            return View(libraryDtos);
         }
+
 
         // GET: Libraries/Details/5
         public IActionResult Details(Guid id)
@@ -49,48 +63,28 @@ namespace GamingPlatform.Web.Controllers
             return View(library);
         }
 
-        // GET: Libraries/Create
-        public IActionResult Create()
-        {
-            ViewData["GameId"] = new SelectList(_gameService.GetAllGames(), "Id", "Id");
-            ViewData["GamerId"] = new SelectList(_gamerService.GetAllGamers(), "Id", "Id");
-            return View();
-        }
-
-        // POST: Libraries/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("GamerId,GameId,DateAdded,PlayTimeHours,Id")] Library library)
-        {
-            if (ModelState.IsValid)
-            {
-                library.Id = Guid.NewGuid();
-                _libraryService.AddLibrary(library);
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["GameId"] = new SelectList(_gameService.GetAllGames(), "Id", "Id");
-            ViewData["GamerId"] = new SelectList(_gamerService.GetAllGamers(), "Id", "Id");
-            return View(library);
-        }
 
         // GET: Libraries/Edit/5
-        public IActionResult Edit(Guid? id)
+        public IActionResult Edit(Guid id)
         {
             if (id == null)
             {
                 return NotFound();
             }
-
-            var library = await _context.GamerGames.FindAsync(id);
+            var library = _libraryService.GetLibraryById(id);
             if (library == null)
             {
                 return NotFound();
             }
-            ViewData["GameId"] = new SelectList(_gameService.GetAllGames(), "Id", "Id");
-            ViewData["GamerId"] = new SelectList(_gamerService.GetAllGamers(), "Id", "Id");
-            return View(library);
+            var dto = new LibraryDTO()
+            {
+                Id = library.Id,
+                GameName = _gameService.GetGameById(library.GameId).Title,
+                DateAdded = library.DateAdded,
+                PlayTimeHours = library.PlayTimeHours
+            };
+
+            return View(dto);
         }
 
         // POST: Libraries/Edit/5
@@ -98,23 +92,37 @@ namespace GamingPlatform.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("GamerId,GameId,DateAdded,PlayTimeHours,Id")] Library library)
+        public IActionResult Edit(Guid id, [Bind("GamerId,GameName,DateAdded,PlayTimeHours,Id")] LibraryDTO libraryDTO)
         {
-            if (id != library.Id)
+            if (id != libraryDTO.Id)
             {
                 return NotFound();
             }
+
+            Library library = _libraryService.GetLibraryById(libraryDTO.Id);
+            
+
 
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(library);
-                    await _context.SaveChangesAsync();
+                    var game = _gameService.GetAllGames()
+                        .FirstOrDefault(x => x.Title.Equals(libraryDTO.GameName, StringComparison.OrdinalIgnoreCase));
+                    if (game == null)
+                    {
+                        ModelState.AddModelError("GameName", "Game not found.");
+                        return View(libraryDTO);
+                    }
+
+                    library.GameId = game.Id;
+                    library.DateAdded = libraryDTO.DateAdded;
+                    library.PlayTimeHours = libraryDTO.PlayTimeHours;
+                    _libraryService.UpdateLibrary(library);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!LibraryExists(library.Id))
+                    if (library.Id == null)
                     {
                         return NotFound();
                     }
@@ -125,49 +133,15 @@ namespace GamingPlatform.Web.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", library.GameId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", library.GamerId);
-            return View(library);
-        }
-
-        // GET: Libraries/Delete/5
-        public async Task<IActionResult> Delete(Guid? id)
-        {
-            if (id == null)
+            var dto = new LibraryDTO()
             {
-                return NotFound();
-            }
+                Id = library.Id,
+                GameName = _gameService.GetGameById(library.GameId).Title,
+                DateAdded = library.DateAdded,
+                PlayTimeHours = library.PlayTimeHours
+            };
 
-            var library = await _context.GamerGames
-                .Include(l => l.Game)
-                .Include(l => l.Gamer)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (library == null)
-            {
-                return NotFound();
-            }
-
-            return View(library);
-        }
-
-        // POST: Libraries/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(Guid id)
-        {
-            var library = await _context.GamerGames.FindAsync(id);
-            if (library != null)
-            {
-                _context.GamerGames.Remove(library);
-            }
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        private bool LibraryExists(Guid id)
-        {
-            return _context.GamerGames.Any(e => e.Id == id);
+            return View(dto);
         }
     }
 }
