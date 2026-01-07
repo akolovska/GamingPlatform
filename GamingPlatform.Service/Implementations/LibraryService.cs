@@ -31,32 +31,44 @@ namespace GamingPlatform.Service.Implementations
         //     _libraryRepository.Insert(library);
         // }
 
-        public void AddLibrary(Library library)
-        {
-            _libraryRepository.Insert(library);
-        }
+        //public void DeleteLibrary(Guid gamerId, Guid gameId)
+        //{
+        //    Library library = GetLibrary(gamerId, gameId);
+        //    _libraryRepository.Delete(library);
+        //}
 
-        public void DeleteLibrary(Guid gamerId, Guid gameId)
-        {
-            Library library = GetLibrary(gamerId, gameId);
-            _libraryRepository.Delete(library);
-        }
+        //public void UpdateLibrary(Guid gamerId, Guid gameId)
+        //{
+        //    Library library = GetLibrary(gamerId, gameId);
+        //    _libraryRepository.Update(library);
+        //}
 
-        public void UpdateLibrary(Guid gamerId, Guid gameId)
-        {
-            Library library = GetLibrary(gamerId, gameId);
-            _libraryRepository.Update(library);
-        }
-
-        public Library GetLibrary(Guid gamerId, Guid gameId)
-        {
-            return _libraryRepository.Get(selector: x => x,
-                predicate: x => x.GamerId.Equals(gamerId) && x.GameId.Equals(gameId));
-        }
-        public Library GetLibraryById(Guid id)
+        public Library GetLibrary(Guid id)
         {
             return _libraryRepository.Get(selector: x => x,
                 predicate: x => x.Id.Equals(id));
+        }
+
+        public void DeleteGameFromLibrary(Guid gamerId, Guid gameId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void AddGameToLibrary(Guid gamerId, Guid gameId)
+        {
+            Game game = _gameService.GetGameById(gameId);
+            Gamer gamer = _gamerService.GetGamerById(gamerId);
+            Library library = new Library()
+            {
+                DateAdded = DateTime.Now,
+                Game = game,
+                GameId = gameId,
+                GamerId = gamerId,
+                Gamer = gamer,
+                Id = Guid.NewGuid(),
+                PlayTimeHours = 0
+            };
+            _libraryRepository.Update(library);
         }
 
         public List<Game> GetAllGamesFromLibrary(Guid gamerId)
@@ -65,10 +77,10 @@ namespace GamingPlatform.Service.Implementations
                 predicate: x => x.GamerId.Equals(gamerId)).ToList();
         }
 
-        public List<Library> GetAllLibrariesByUser(Guid gamerId)
-        {
-            return _libraryRepository.GetAll(selector: x => x,
-                predicate: x => x.GamerId.Equals(gamerId)).ToList();
-        }
+        //public List<Library> GetAllLibrariesByUser(Guid gamerId)
+        //{
+        //    return _libraryRepository.GetAll(selector: x => x,
+        //        predicate: x => x.GamerId.Equals(gamerId)).ToList();
+        //}
     }
 }

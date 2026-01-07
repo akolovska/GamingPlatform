@@ -16,6 +16,8 @@ namespace GamingPlatform.Domain.Models
         public ICollection<HighScore> HighScores { get; set; }
         public ICollection<Library> Library { get; set; }
         public ICollection<Wishlist> Wishlist { get; set; }
-        public ICollection<Gamer> Friends { get; set; }
+        public ICollection<Friend> Friends { get; set; }
+        public ICollection<Achievement> Achievements { get; set; }
+        public ICollection<Rating> Ratings { get; set; }
     }
 }

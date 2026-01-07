@@ -5,9 +5,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>
-    Library for @Html.DisplayNameFor(model => model.GamerId)
-</h1>
+<h1>Index</h1>
 
 <p>
     <a asp-action="Create">Create New</a>
@@ -33,6 +31,9 @@
     <tbody>
 @foreach (var item in Model) {
         <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.Gamer.Id)
+            </td>
             <td>
                 @Html.DisplayFor(modelItem => item.Game.Id)
             </td>

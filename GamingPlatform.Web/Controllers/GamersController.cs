@@ -54,7 +54,7 @@ namespace GamingPlatform.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Username,Description,ProfilePicture,DateJoined,Email,Id")] Gamer gamer)
+        public IActionResult Create([Bind("Username,Description,ProfilePicture,DateJoined,Email,Id")] Gamer gamer)
         {
             if (ModelState.IsValid)
             {
@@ -86,7 +86,7 @@ namespace GamingPlatform.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("Username,Description,ProfilePicture,DateJoined,Email,Id")] Gamer gamer)
+        public IActionResult Edit(Guid id, [Bind("Username,Description,ProfilePicture,DateJoined,Email,Id")] Gamer gamer)
         {
             if (id != gamer.Id)
             {
@@ -97,8 +97,7 @@ namespace GamingPlatform.Web.Controllers
             {
                 try
                 {
-                    _context.Update(gamer);
-                    await _context.SaveChangesAsync();
+                    _gamerService.UpdateGamer(gamer);
                 }
                 catch (DbUpdateConcurrencyException)
                 {

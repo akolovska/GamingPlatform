@@ -19,7 +19,8 @@ namespace GamingPlatform.Repository.Data
         public DbSet<Gamer> Gamers { get; set; }
         public DbSet<Library> GamerGames { get; set; }
         public DbSet<Wishlist> Wishlists { get; set; }
-
-
+        public DbSet<Achievement> Achievements { get; set; }
+        public DbSet<Friend> Friends { get; set; }
+        public DbSet<Rating> Ratings { get; set; }
     }
 }
