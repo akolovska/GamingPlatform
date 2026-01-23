@@ -13,7 +13,6 @@ namespace GamingPlatform.Domain.Models
         public string? ProfilePicture { get; set; }
         public DateTime? DateJoined { get; set; }
         public string? Email { get; set; }
-        public ICollection<HighScore> HighScores { get; set; }
         public ICollection<Library> Library { get; set; }
         public ICollection<Wishlist> Wishlist { get; set; }
         public ICollection<Friend> Friends { get; set; }

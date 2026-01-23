@@ -15,6 +15,8 @@ builder.Services.AddDefaultIdentity<GamingPlatformUser>(options => options.SignI
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddControllersWithViews();
 
+builder.
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

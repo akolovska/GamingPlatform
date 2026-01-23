@@ -15,7 +15,6 @@ namespace GamingPlatform.Domain.Models
         public decimal? Price { get; set; }
         public string? Platform { get; set; } // e.g., PC, Console, Mobile
         public string? CoverImageUrl { get; set; } // URL to the game's cover image
-        public ICollection<HighScore> HighScores { get; set; }
         public ICollection<Library> Library { get; set; }
         public ICollection<GameDev> GameDevelopers { get; set; }
         public ICollection<Wishlist> Wishlist { get; set; }
