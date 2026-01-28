@@ -127,15 +127,20 @@ namespace GamingPlatform.Web.Areas.Identity.Pages.Account
             {
                 var user = CreateUser();
 
-                await _userStore.SetUserNameAsync(user, Input.Username, CancellationToken.None);
+                // CHANGE: Set Email as the UserName for login purposes
+                await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
                 await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+
+                // Store the custom username in the user properties
                 user.FirstName = Input.FirstName;
                 user.LastName = Input.LastName;
+                user.DisplayUsername = Input.Username; // This stores the custom username
                 user.DateOfBirth = Input.DateOfBirth;
                 user.FriendshipsSent = new List<Friend>();
                 user.FriendshipsReceived = new List<Friend>();
                 user.ProfilePictureUrl = Input.ProfilePictureUrl;
                 user.Bio = Input.Bio;
+
                 var result = await _userManager.CreateAsync(user, Input.Password);
 
                 if (result.Succeeded)

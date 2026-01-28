@@ -12,6 +12,7 @@ namespace GamingPlatform.Domain.Identity
     {
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
+        public string DisplayUsername { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public string? ProfilePictureUrl { get; set; }
         public string? Bio { get; set; }

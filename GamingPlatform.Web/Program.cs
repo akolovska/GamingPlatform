@@ -34,6 +34,7 @@ builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Str
 
 var app = builder.Build();
 
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
