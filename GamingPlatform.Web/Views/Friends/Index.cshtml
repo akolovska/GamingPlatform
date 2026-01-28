@@ -14,12 +14,6 @@
     <thead>
         <tr>
             <th>
-                @Html.DisplayNameFor(model => model.UserId)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.FriendId)
-            </th>
-            <th>
                 @Html.DisplayNameFor(model => model.Status)
             </th>
             <th>
@@ -31,12 +25,6 @@
     <tbody>
 @foreach (var item in Model) {
         <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.UserId)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.FriendId)
-            </td>
             <td>
                 @Html.DisplayFor(modelItem => item.Status)
             </td>

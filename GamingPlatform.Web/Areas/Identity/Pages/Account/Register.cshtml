@@ -23,13 +23,18 @@
                 <span asp-validation-for="Input.LastName" class="text-danger"></span>
             </div>
             <div class="form-floating mb-3">
+                <input asp-for="Input.Username" class="form-control" autocomplete="Username" aria-required="true" placeholder="Username" />
+                <label asp-for="Input.Username">Username</label>
+                <span asp-validation-for="Input.Username" class="text-danger"></span>
+            </div>
+            <div class="form-floating mb-3">
                 <input asp-for="Input.DateOfBirth" class="form-control" autocomplete="Date Of Birth" aria-required="true" placeholder="Date Of Birth" type="date" />
                 <label asp-for="Input.DateOfBirth">Date Of Birth</label>
                 <span asp-validation-for="Input.DateOfBirth" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Input.ProfilePictureUrl"></label>
-                <input asp-for="Input.ProfilePictureUrl" type="file" class="form-control" />
+            <div class="form-group mb-3">
+                <input asp-for="Input.ProfilePictureUrl" class="form-control" aria-required="true" placeholder="Profile picture" />
+                <label asp-for="Input.ProfilePictureUrl">Profile picture</label>
                 <span asp-validation-for="Input.ProfilePictureUrl" class="text-danger"></span>
             </div>
             <div class="form-floating mb-3">

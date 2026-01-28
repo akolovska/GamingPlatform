@@ -1,61 +1,104 @@
-﻿@model GamingPlatform.Domain.Models.Game
+﻿@model GamingPlatform.Domain.DTO.GameDto
 
 @{
-    ViewData["Title"] = "Details";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = Model.Title;
 }
 
-<h1>Details</h1>
+<div class="container mt-4">
+    <div class="row">
+        <!-- Game cover -->
+        <div class="col-md-4">
+            <img src="@Model.CoverImageUrl" class="img-fluid rounded" alt="@Model.Title" />
+        </div>
 
-<div>
-    <h4>Game</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Title)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Title)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Description)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Description)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Genre)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Genre)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.ReleaseDate)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.ReleaseDate)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Price)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Price)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Platform)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Platform)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.CoverImageUrl)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.CoverImageUrl)
-        </dd>
-    </dl>
-</div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
-    <a asp-action="Index">Back to List</a>
+        <!-- Game info -->
+        <div class="col-md-8">
+            <h2>@Model.Title</h2>
+            <p class="text-muted">@Model.Genre | @Model.Platform</p>
+            <p>@Model.Description</p>
+
+            <h4 class="text-success">
+                @(Model.Price == 0 ? "Free to Play" : $"${Model.Price}")
+            </h4>
+
+            <!-- Buy/Add to Wishlist buttons -->
+            <div class="mb-3">
+                @if (Model.InLibrary)
+                {
+                    <button class="btn btn-secondary" disabled>Already Bought</button>
+                }
+                else
+                {
+                    <form asp-controller="Libraries" asp-action="BuyGame" method="post" class="d-inline">
+                        <input type="hidden" name="gameId" value="@Model.Id" />
+                        <button type="submit" class="btn btn-primary">Buy Now</button>
+                    </form>
+                }
+
+                @if (Model.InWishlist)
+                {
+                    <button class="btn btn-secondary" disabled>Already in Wishlist</button>
+                }
+                else
+                {
+                    <form asp-controller="Wishlists" asp-action="AddToWishlist" method="post" class="d-inline">
+                        <input type="hidden" name="gameId" value="@Model.Id" />
+                        <button type="submit" class="btn btn-outline-secondary">Add to Wishlist</button>
+                    </form>
+                }
+
+            </div>
+
+
+            <!-- System requirements -->
+            @if (!string.IsNullOrEmpty(Model.SystemRequirements))
+            {
+                <h5>System Requirements</h5>
+                <p>@Model.SystemRequirements</p>
+            }
+
+            <!-- Developers -->
+            <h5>Developers</h5>
+            @if (Model.Developers != null && Model.Developers.Any())
+            {
+                <ul>
+                    @foreach (var dev in Model.Developers)
+                    {
+                        <li>@dev</li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No developers listed.</p>
+            }
+
+            <!-- Achievements -->
+            <h5>Available Achievements</h5>
+            @if (Model.Achievements != null && Model.Achievements.Any())
+            {
+                <ul>
+                    @foreach (var achievement in Model.Achievements)
+                    {
+                        <li>@achievement</li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No achievements available.</p>
+            }
+
+            <!-- Ratings -->
+            <h5>Ratings</h5>
+            @if (Model.Rating != null)
+            {
+                <p>@Model.Rating / 5 ⭐</p>
+            }
+            else
+            {
+                <p>No ratings yet.</p>
+            }
+        </div>
+    </div>
 </div>

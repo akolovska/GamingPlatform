@@ -1,72 +1,59 @@
 ﻿@model IEnumerable<GamingPlatform.Domain.Models.Game>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Store";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>Index</h1>
+<style>
+    body { background:#1b1b1b; color:#eee; }
+    .filter-bar { background:#111; padding:15px; border-radius:8px; }
+    .game-card { background:#2a2a2a; border-radius:10px; overflow:hidden; transition:transform .2s; }
+    .game-card:hover { transform: scale(1.03); }
+    .game-card img { height:180px; object-fit:cover; width:100%; }
+    .price { font-weight:bold; color:#66c0f4; }
+</style>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Title)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Description)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Genre)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.ReleaseDate)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Price)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Platform)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.CoverImageUrl)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Title)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Description)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Genre)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.ReleaseDate)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Price)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Platform)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.CoverImageUrl)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
+<h2 class="mb-3">Store</h2>
+
+<!-- FILTER BAR -->
+<form method="get" class="filter-bar mb-4 d-flex gap-2">
+    <select name="genre" class="form-select">
+        <option value="">All Genres</option>
+        <option value="Action">Action</option>
+        <option value="RPG">RPG</option>
+        <option value="Strategy">Strategy</option>
+    </select>
+
+    <select name="filter" class="form-select">
+        <option value="">All Games</option>
+        <option value="Free">Free to Play</option>
+        <option value="Popular">Most Popular</option>
+        <option value="Trending">Trending</option>
+    </select>
+
+    <button class="btn btn-primary">Apply</button>
+</form>
+
+<!-- GAMES GRID -->
+<div class="row g-4">
+    @foreach (var game in Model)
+    {
+        <div class="col-md-3">
+            <div class="game-card">
+                <img src="@game.CoverImageUrl" alt="@game.Title" />
+                <div class="p-3">
+                    <h5>@game.Title</h5>
+                    <small>@game.Genre • @game.Platform</small>
+                    <p class="mt-2 price">
+                        @(game.Price == 0 ? "Free to Play" : $"${game.Price}")
+                    </p>
+                    <p class="mt-1 text-light small"><strong>System Requirements:</strong> @game.SystemRequirements</p>
+                    <a asp-action="Details" asp-route-id="@game.Id" class="btn btn-sm btn-outline-light w-100">
+                        View Game
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>

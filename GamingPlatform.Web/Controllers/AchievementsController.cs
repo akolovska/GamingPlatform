@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
 
-namespace GamingPlatform.Web
+namespace GamingPlatform.Web.Controllers
 {
     public class AchievementsController : Controller
     {
@@ -22,8 +22,7 @@ namespace GamingPlatform.Web
         // GET: Achievements
         public async Task<IActionResult> Index()
         {
-            var applicationDbContext = _context.Achievements.Include(a => a.Game).Include(a => a.Gamer);
-            return View(await applicationDbContext.ToListAsync());
+            return View(await _context.Achievements.ToListAsync());
         }
 
         // GET: Achievements/Details/5
@@ -35,8 +34,6 @@ namespace GamingPlatform.Web
             }
 
             var achievement = await _context.Achievements
-                .Include(a => a.Game)
-                .Include(a => a.Gamer)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (achievement == null)
             {
@@ -49,8 +46,6 @@ namespace GamingPlatform.Web
         // GET: Achievements/Create
         public IActionResult Create()
         {
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id");
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id");
             return View();
         }
 
@@ -59,7 +54,7 @@ namespace GamingPlatform.Web
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("GamerId,GameId,Title,DateReceived,Id")] Achievement achievement)
+        public async Task<IActionResult> Create([Bind("GameId,Title,Description,Id")] Achievement achievement)
         {
             if (ModelState.IsValid)
             {
@@ -68,8 +63,6 @@ namespace GamingPlatform.Web
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", achievement.GameId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", achievement.GamerId);
             return View(achievement);
         }
 
@@ -86,8 +79,6 @@ namespace GamingPlatform.Web
             {
                 return NotFound();
             }
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", achievement.GameId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", achievement.GamerId);
             return View(achievement);
         }
 
@@ -96,7 +87,7 @@ namespace GamingPlatform.Web
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("GamerId,GameId,Title,DateReceived,Id")] Achievement achievement)
+        public async Task<IActionResult> Edit(Guid id, [Bind("GameId,Title,Description,Id")] Achievement achievement)
         {
             if (id != achievement.Id)
             {
@@ -123,8 +114,6 @@ namespace GamingPlatform.Web
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["GameId"] = new SelectList(_context.Games, "Id", "Id", achievement.GameId);
-            ViewData["GamerId"] = new SelectList(_context.Gamers, "Id", "Id", achievement.GamerId);
             return View(achievement);
         }
 
@@ -137,8 +126,6 @@ namespace GamingPlatform.Web
             }
 
             var achievement = await _context.Achievements
-                .Include(a => a.Game)
-                .Include(a => a.Gamer)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (achievement == null)
             {

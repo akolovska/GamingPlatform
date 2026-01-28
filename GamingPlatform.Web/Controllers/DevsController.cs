@@ -7,34 +7,34 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
-using GamingPlatform.Service.Interfaces;
 
-namespace GamingPlatform.Web
+namespace GamingPlatform.Web.Controllers
 {
     public class DevsController : Controller
     {
-        private readonly IDevService _devService;
+        private readonly ApplicationDbContext _context;
 
-        public DevsController(IDevService devService)
+        public DevsController(ApplicationDbContext context)
         {
-            _devService = devService;
+            _context = context;
         }
 
         // GET: Devs
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            return View(_devService.GetAllDevs());
+            return View(await _context.Devs.ToListAsync());
         }
 
         // GET: Devs/Details/5
-        public IActionResult Details(Guid id)
+        public async Task<IActionResult> Details(Guid? id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var dev = _devService.GetDevById(id);
+            var dev = await _context.Devs
+                .FirstOrDefaultAsync(m => m.Id == id);
             if (dev == null)
             {
                 return NotFound();
@@ -59,21 +59,22 @@ namespace GamingPlatform.Web
             if (ModelState.IsValid)
             {
                 dev.Id = Guid.NewGuid();
-                _devService.AddDev(dev);
+                _context.Add(dev);
+                await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
             return View(dev);
         }
 
         // GET: Devs/Edit/5
-        public IActionResult Edit(Guid id)
+        public async Task<IActionResult> Edit(Guid? id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var dev = _devService.GetDevById(id);
+            var dev = await _context.Devs.FindAsync(id);
             if (dev == null)
             {
                 return NotFound();
@@ -97,7 +98,8 @@ namespace GamingPlatform.Web
             {
                 try
                 {
-                    _devService.UpdateDev(dev);
+                    _context.Update(dev);
+                    await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -116,14 +118,15 @@ namespace GamingPlatform.Web
         }
 
         // GET: Devs/Delete/5
-        public IActionResult Delete(Guid id)
+        public async Task<IActionResult> Delete(Guid? id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var dev = _devService.GetDevById(id);
+            var dev = await _context.Devs
+                .FirstOrDefaultAsync(m => m.Id == id);
             if (dev == null)
             {
                 return NotFound();
@@ -137,18 +140,19 @@ namespace GamingPlatform.Web
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
-            var dev = _devService.GetDevById(id);
+            var dev = await _context.Devs.FindAsync(id);
             if (dev != null)
             {
-                _devService.DeleteDev(id);
+                _context.Devs.Remove(dev);
             }
 
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool DevExists(Guid id)
         {
-            return _devService.GetAllDevs().Any(e => e.Id == id);
+            return _context.Devs.Any(e => e.Id == id);
         }
     }
 }

@@ -1,0 +1,26 @@
+﻿@model GamingPlatform.API.Models.FreeToGameGame
+
+@{
+    ViewData["Title"] = @Model.Title;
+}
+
+<h1>@Model.Title</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <img src="@Model.Thumbnail" class="img-fluid" alt="@Model.Title" />
+    </div>
+    <div class="col-md-8">
+        <p>@Model.ShortDescription</p>
+        <p><strong>Genre:</strong> @Model.Genre</p>
+        <p><strong>Platform:</strong> @Model.Platform</p>
+        <p><strong>Developer:</strong> @Model.Developer</p>
+        <p><strong>Publisher:</strong> @Model.Publisher</p>
+        <p><strong>Release Date:</strong> @Model.ReleaseDate</p>
+        <p>
+            <a href="@Model.GameUrl" target="_blank" class="btn btn-success">Play Game</a>
+            <a href="@Model.FreeToGameProfileUrl" target="_blank" class="btn btn-info">FreeToGame Profile</a>
+            <a asp-controller="Admin" asp-action="FreeToGame" class="btn btn-secondary">Back to list</a>
+        </p>
+    </div>
+</div>

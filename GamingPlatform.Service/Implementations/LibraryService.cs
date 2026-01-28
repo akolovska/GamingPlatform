@@ -1,11 +1,12 @@
-﻿using System;
+﻿using GamingPlatform.Domain.Models;
+using GamingPlatform.Repository.Interface;
+using GamingPlatform.Service.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GamingPlatform.Domain.Models;
-using GamingPlatform.Repository.Interface;
-using GamingPlatform.Service.Interfaces;
 
 namespace GamingPlatform.Service.Implementations
 {
@@ -13,74 +14,60 @@ namespace GamingPlatform.Service.Implementations
     {
         private readonly IRepository<Library> _libraryRepository;
         private readonly IGameService _gameService;
-        private readonly IGamerService _gamerService;
-        // public void AddLibrary(Guid gamerId, Guid gameId)
-        // {
-        //     Game game = _gameService.GetGameById(gameId);
-        //     Gamer gamer = _gamerService.GetGamerById(gamerId);
-        //     Library library = new Library()
-        //     {
-        //         DateAdded = DateTime.Now,
-        //         Game = game,
-        //         GameId = gameId,
-        //         GamerId = gamerId,
-        //         Gamer = gamer,
-        //         Id = Guid.NewGuid(),
-        //         PlayTimeHours = 0
-        //     };
-        //     _libraryRepository.Insert(library);
-        // }
-
-        //public void DeleteLibrary(Guid gamerId, Guid gameId)
-        //{
-        //    Library library = GetLibrary(gamerId, gameId);
-        //    _libraryRepository.Delete(library);
-        //}
-
-        //public void UpdateLibrary(Guid gamerId, Guid gameId)
-        //{
-        //    Library library = GetLibrary(gamerId, gameId);
-        //    _libraryRepository.Update(library);
-        //}
-
-        public Library GetLibrary(Guid id)
+        public LibraryService(IRepository<Library> libraryRepository, IGameService gameService)
         {
-            return _libraryRepository.Get(selector: x => x,
-                predicate: x => x.Id.Equals(id));
+            _libraryRepository = libraryRepository;
+            _gameService = gameService;
         }
-
-        public void DeleteGameFromLibrary(Guid gamerId, Guid gameId)
+        public void AddGameToLibrary(string gamerid, Guid gameId)
         {
-            throw new NotImplementedException();
-        }
-
-        public void AddGameToLibrary(Guid gamerId, Guid gameId)
-        {
-            Game game = _gameService.GetGameById(gameId);
-            Gamer gamer = _gamerService.GetGamerById(gamerId);
-            Library library = new Library()
+            _libraryRepository.Insert(new Library
             {
-                DateAdded = DateTime.Now,
-                Game = game,
-                GameId = gameId,
-                GamerId = gamerId,
-                Gamer = gamer,
                 Id = Guid.NewGuid(),
+                GamerId = gamerid,
+                GameId = gameId,
+                DateAdded = DateTime.UtcNow,
                 PlayTimeHours = 0
-            };
-            _libraryRepository.Update(library);
+            });
         }
 
-        public List<Game> GetAllGamesFromLibrary(Guid gamerId)
+        public void DeleteGameFromLibrary(string gamerid, Guid gameId)
         {
-            return _libraryRepository.GetAll(selector: x => x.Game,
-                predicate: x => x.GamerId.Equals(gamerId)).ToList();
+            Library entry = _libraryRepository.Get(
+                selector: l => l,
+                predicate: l => l.GamerId == gamerid && l.GameId == gameId
+            );
+            _libraryRepository.Delete(entry);
         }
 
-        //public List<Library> GetAllLibrariesByUser(Guid gamerId)
-        //{
-        //    return _libraryRepository.GetAll(selector: x => x,
-        //        predicate: x => x.GamerId.Equals(gamerId)).ToList();
-        //}
+        public List<Library> GetAllLibraries()
+        {
+            return _libraryRepository.GetAll(x => x).ToList();
+        }
+
+        public Library GetLibrary(string gamerid)
+        {
+            return _libraryRepository.Get(selector: x => x, predicate: l => l.GamerId == gamerid);
+        }
+
+        public List<Game> GetUserGames(string gamerid)
+        {
+            return _libraryRepository.GetAll(selector: l => l.Game!, predicate: l => l.GamerId == gamerid).ToList();
+        }
+        public bool IsGameInLibrary(string userId, Guid gameId)
+        {
+            return _libraryRepository.GetAll(
+                selector: x => x,
+                predicate: l => l.GamerId == userId && l.GameId == gameId
+            ).Any();
+        }
+        public Game GetGameFromLibrary(string userId, Guid gameId)
+        {
+            return _libraryRepository.Get(
+                selector: l => l.Game!,
+                predicate: l => l.GamerId == userId && l.GameId == gameId
+            );
+        }
+
     }
 }

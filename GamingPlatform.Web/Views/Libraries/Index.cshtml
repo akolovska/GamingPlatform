@@ -1,54 +1,41 @@
-﻿@model IEnumerable<GamingPlatform.Domain.Models.Library>
+﻿@model IEnumerable<GamingPlatform.Domain.DTO.GameDto>
 
 @{
-    ViewData["Title"] = "Index";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "My Library";
 }
 
-<h1>Index</h1>
+<h2 class="mb-4">My Library</h2>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Gamer)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Game)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.DateAdded)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.PlayTimeHours)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Gamer.Id)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Game.Id)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DateAdded)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.PlayTimeHours)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
+@if (!Model.Any())
+{
+    <p>You haven’t purchased any games yet.</p>
 }
-    </tbody>
-</table>
+else
+{
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        @foreach (var game in Model)
+        {
+            <div class="col">
+                <div class="card h-100">
+                    <!-- Cover image -->
+                    <img src="@game.CoverImageUrl" class="card-img-top" alt="@game.Title" style="height:200px; object-fit:cover;">
+
+                    <div class="card-body">
+                        <h5 class="card-title">@game.Title</h5>
+                        <p class="card-text text-truncate">@game.Description</p>
+                        <p class="card-text"><small class="text-muted">@game.Genre | @game.Platform</small></p>
+                        <p class="card-text">
+                            <strong>Price:</strong> @(game.Price == 0 ? "Free to Play" : $"${game.Price}")
+                        </p>
+
+                        <!-- Details button -->
+                        <a asp-controller="Libraries"
+                           asp-action="Details"
+                           asp-route-id="@game.Id"
+                           class="btn btn-primary">View Details</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

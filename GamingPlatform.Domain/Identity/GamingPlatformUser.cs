@@ -15,7 +15,7 @@ namespace GamingPlatform.Domain.Identity
         public DateTime? DateOfBirth { get; set; }
         public string? ProfilePictureUrl { get; set; }
         public string? Bio { get; set; }
-        public Wishlist Wishlist { get; set; }
-        public Library Library { get; set; }
+        public ICollection<Friend> FriendshipsSent { get; set; }
+        public ICollection<Friend> FriendshipsReceived { get; set; }
     }
 }

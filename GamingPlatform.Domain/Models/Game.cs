@@ -13,10 +13,13 @@ namespace GamingPlatform.Domain.Models
         public string? Genre { get; set; }
         public DateTime? ReleaseDate { get; set; }
         public decimal? Price { get; set; }
-        public string? Platform { get; set; } // e.g., PC, Console, Mobile
-        public string? CoverImageUrl { get; set; } // URL to the game's cover image
-        public ICollection<Library> Library { get; set; }
+        public string? Platform { get; set; }
+        public string? CoverImageUrl { get; set; }
+        public string? SystemRequirements { get; set; }
+        public ICollection<Library> Libraries { get; set; }
         public ICollection<GameDev> GameDevelopers { get; set; }
-        public ICollection<Wishlist> Wishlist { get; set; }
+        public ICollection<Wishlist> Wishlists { get; set; }
+        public ICollection<Review> Reviews { get; set; }
+        public ICollection<Achievement> Achievements { get; set; }
     }
 }

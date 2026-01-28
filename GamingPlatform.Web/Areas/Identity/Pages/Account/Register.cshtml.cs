@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using System.Collections;
 
 namespace GamingPlatform.Web.Areas.Identity.Pages.Account
 {
@@ -85,8 +86,10 @@ namespace GamingPlatform.Web.Areas.Identity.Pages.Account
             [Required]
             public string LastName { get; set; }
             [Required]
+            public string Username { get; set; }
+            [Required]
             public DateTime DateOfBirth { get; set; }
-            public IFormFile ProfilePictureUrl { get; set; }
+            public string ProfilePictureUrl { get; set; }
             public string Bio { get; set; }
 
             /// <summary>
@@ -124,21 +127,14 @@ namespace GamingPlatform.Web.Areas.Identity.Pages.Account
             {
                 var user = CreateUser();
 
-                await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+                await _userStore.SetUserNameAsync(user, Input.Username, CancellationToken.None);
                 await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
                 user.FirstName = Input.FirstName;
                 user.LastName = Input.LastName;
                 user.DateOfBirth = Input.DateOfBirth;
-                user.Wishlist = new Wishlist();
-                user.Library = new Library();
-                if (Input.ProfilePictureUrl != null && Input.ProfilePictureUrl.Length > 0)
-                {
-                    using (var memoryStream = new MemoryStream())
-                    {
-                        await Input.ProfilePictureUrl.CopyToAsync(memoryStream);
-                        user.ProfilePictureUrl = Convert.ToBase64String(memoryStream.ToArray());
-                    }
-                }
+                user.FriendshipsSent = new List<Friend>();
+                user.FriendshipsReceived = new List<Friend>();
+                user.ProfilePictureUrl = Input.ProfilePictureUrl;
                 user.Bio = Input.Bio;
                 var result = await _userManager.CreateAsync(user, Input.Password);
 

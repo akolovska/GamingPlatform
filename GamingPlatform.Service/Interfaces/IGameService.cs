@@ -1,9 +1,10 @@
-﻿using System;
+﻿using GamingPlatform.Domain.Models;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GamingPlatform.Domain.Models;
 
 namespace GamingPlatform.Service.Interfaces
 {
@@ -14,5 +15,7 @@ namespace GamingPlatform.Service.Interfaces
         void UpdateGame(Game game);
         Game GetGameById(Guid id);
         List<Game> GetAllGames();
+        List<Game> GetGamesByIds(List<Guid> ids);
+
     }
 }

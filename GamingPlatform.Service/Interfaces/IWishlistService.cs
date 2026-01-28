@@ -9,10 +9,10 @@ namespace GamingPlatform.Service.Interfaces
 {
     public interface IWishlistService
     {
-        void AddToWishlist(Guid gamerId, Guid gameId);
-        void DeleteWishlist(Guid gamerId, Guid gameId);
-        void UpdateGameInWishlist(Guid gamerId, Guid gameId);
-        Wishlist GetWishlist(Guid gamerId, Guid gameId);
-        List<Game> GetAllGamesFromWishlist(Guid gamerId);
+        void AddGameToWishlist(string gamerid, Guid gameId);
+        void DeleteGameFromWishlist(string gamerid, Guid gameId);
+        Wishlist GetWishlist(string gamerid, Guid gameId);
+        List<Game> GetAllGamesFromWishlist(string gamerid);
+        bool IsGameInWishlist(string userId, Guid gameId);
     }
 }

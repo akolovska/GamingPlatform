@@ -1,17 +1,24 @@
-﻿using System;
+﻿using GamingPlatform.Domain.Models;
+using GamingPlatform.Repository.Interface;
+using GamingPlatform.Service.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GamingPlatform.Domain.Models;
-using GamingPlatform.Repository.Interface;
-using GamingPlatform.Service.Interfaces;
 
 namespace GamingPlatform.Service.Implementations
 {
     public class GameService : IGameService
     {
         private readonly IRepository<Game> _gameRepository;
+
+        public GameService(IRepository<Game> gameRepository)
+        {
+            _gameRepository = gameRepository;
+        }
+
         public void AddGame(Game game)
         {
             _gameRepository.Insert(game);
@@ -23,9 +30,9 @@ namespace GamingPlatform.Service.Implementations
             _gameRepository.Delete(game);
         }
 
-        public void UpdateGame(Game game)
+        public List<Game> GetAllGames()
         {
-            _gameRepository.Update(game);
+            return _gameRepository.GetAll(selector: x => x).ToList();
         }
 
         public Game GetGameById(Guid id)
@@ -34,9 +41,17 @@ namespace GamingPlatform.Service.Implementations
                 predicate: x => x.Id.Equals(id));
         }
 
-        public List<Game> GetAllGames()
+        public void UpdateGame(Game game)
         {
-            return _gameRepository.GetAll(selector: x => x).ToList();
+            _gameRepository.Update(game);
         }
+        public List<Game> GetGamesByIds(List<Guid> ids)
+        {
+            return _gameRepository.GetAll(
+                selector: x => x,
+                predicate: x => ids.Contains(x.Id)
+            ).ToList();
+        }
+
     }
 }

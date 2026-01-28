@@ -1,0 +1,34 @@
+﻿@model GamingPlatform.Domain.Identity.GamingPlatformUser
+@{
+    ViewData["Title"] = "Edit Profile";
+}
+
+<div class="container mt-4">
+    <h2>Edit Profile</h2>
+
+    <form asp-action="Edit" method="post">
+        <div asp-validation-summary="All" class="text-danger"></div>
+
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Bio" class="form-label">Bio</label>
+            <textarea asp-for="Bio" class="form-control"></textarea>
+            <span asp-validation-for="Bio" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="ProfilePictureUrl" class="form-label">Profile Picture URL</label>
+            <input asp-for="ProfilePictureUrl" class="form-control" />
+            <span asp-validation-for="ProfilePictureUrl" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-success">Save Changes</button>
+        <a asp-action="Index" class="btn btn-secondary ms-2">Cancel</a>
+    </form>
+
+</div>

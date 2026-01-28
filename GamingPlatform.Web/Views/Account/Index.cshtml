@@ -1,0 +1,76 @@
+﻿@model GamingPlatform.Domain.Identity.GamingPlatformUser
+@{
+    ViewData["Title"] = "My Account";
+    var friends = ViewBag.Friends as List<GamingPlatform.Domain.Identity.GamingPlatformUser>;
+}
+
+<h2>My Account</h2>
+
+<div class="mb-4">
+    <h4>Profile</h4>
+    <p><strong>Username:</strong> @Model.UserName</p>
+    <p><strong>Email:</strong> @Model.Email</p>
+    <p><strong>Bio:</strong> @Model.Bio</p>
+    <img src="@Model.ProfilePictureUrl" alt="Profile Picture" width="100" class="rounded" />
+</div>
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <h4>Profile</h4>
+    <a asp-controller="Account" asp-action="Edit" class="btn btn-warning btn-sm">Edit Profile</a>
+</div>
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <h4>Wishlist</h4>
+    <a asp-controller="Wishlists" asp-action="Index" class="btn btn-warning btn-sm">My wishlist</a>
+</div>
+
+
+<div class="mb-4">
+    <h4>Add a Friend</h4>
+    <form asp-action="AddFriend" method="post" class="d-flex gap-2">
+        <input type="text" name="friendUsername" class="form-control" placeholder="Friend's username" required />
+        <button type="submit" class="btn btn-primary">Send Friend Request</button>
+    </form>
+    @if (TempData["FriendMessage"] != null)
+    {
+        <div class="mt-2 text-success">@TempData["FriendMessage"]</div>
+    }
+</div>
+
+<div class="mb-4">
+    <h4>My Friends</h4>
+    @if (friends != null && friends.Any())
+    {
+        <ul class="list-group">
+            @foreach (var f in friends)
+            {
+                <li class="list-group-item">@f.UserName</li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>You have no friends yet.</p>
+    }
+</div>
+<div class="mb-4">
+    <h4>Pending Friend Requests</h4>
+    @if (ViewBag.PendingRequests != null && ViewBag.PendingRequests.Any())
+    {
+        <ul class="list-group">
+            @foreach (var req in ViewBag.PendingRequests)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    @req.SenderUsername
+                    <form asp-action="AcceptFriend" method="post">
+                        <input type="hidden" name="requestId" value="@req.Id" />
+                        <button type="submit" class="btn btn-success btn-sm">Accept</button>
+                    </form>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No pending requests.</p>
+    }
+</div>
+
