@@ -1,6 +1,7 @@
 ﻿@model GamingPlatform.Domain.Identity.GamingPlatformUser
 @{
     ViewData["Title"] = "Edit Profile";
+    var friends = ViewBag.Friends as List<GamingPlatform.Domain.Identity.GamingPlatformUser>;
 }
 
 <div class="container mt-4">
@@ -29,6 +30,37 @@
 
         <button type="submit" class="btn btn-success">Save Changes</button>
         <a asp-action="Index" class="btn btn-secondary ms-2">Cancel</a>
+
     </form>
+    @if (TempData["Verified"] != null)
+    {
+        <div class="mt-2 alert alert-info">@TempData["Verified"]</div>
+    }
+    <div class="mb-4">
+        <h4>Remove Friends</h4>
+        @if (ViewBag.Friends != null)
+        {
+            <ul class="list-group">
+                @foreach (var friend in friends)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        @friend.UserName
+                        <form asp-controller="Friends" asp-action="RemoveFriend" method="post">
+                            <input type="hidden" name="requestId" value="@friend.Id" />
+                            <button type="submit" class="btn btn-success btn-sm">Remove friend</button>
+                        </form>
+                        <form asp-controller="Friends" asp-action="BlockFriend" method="post">
+                            <input type="hidden" name="requestId" value="@friend.Id" />
+                            <button type="submit" class="btn btn-success btn-sm">Block friend</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p>No friends.</p>
+        }
+    </div>
 
 </div>

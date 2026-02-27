@@ -467,17 +467,21 @@ namespace GamingPlatform.Repository.Migrations
 
             modelBuilder.Entity("GamingPlatform.Domain.Models.Friend", b =>
                 {
-                    b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", null)
+                    b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", "FriendUser")
                         .WithMany("FriendshipsReceived")
                         .HasForeignKey("FriendId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
-                    b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", null)
+                    b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", "User")
                         .WithMany("FriendshipsSent")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
+
+                    b.Navigation("FriendUser");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("GamingPlatform.Domain.Models.GameDev", b =>

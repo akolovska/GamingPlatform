@@ -11,9 +11,12 @@ namespace GamingPlatform.Service.Interfaces
 {
     public interface IFriendService
     {
-        bool SendFriendRequest(string userId, string friendUsername);
+        bool SendFriendRequest(string userId, Guid friendUsername);
         List<GamingPlatformUser> GetFriends(string userId);
         void AcceptFriendRequest(Guid friendRequestId, string userId);
         List<Friend> GetPendingRequests(string id);
+        void RemoveFriend(string userId, Guid friendId);
+        void BlockFriend(string userId, Guid friendId);
+        bool IsBlocked(string userId, Guid friendId);
     }
 }

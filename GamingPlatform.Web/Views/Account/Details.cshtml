@@ -1,0 +1,94 @@
+﻿@model GamingPlatform.Domain.Identity.GamingPlatformUser
+@{
+    ViewData["Title"] = "My Account";
+    var friends = ViewBag.Friends as List<GamingPlatform.Domain.Identity.GamingPlatformUser>;
+    var isBlocked = ViewBag.IsBlocked as bool? ?? false;
+    var isFriend = ViewBag.IsFriend as bool? ?? false;  
+    var games = ViewBag.Games as List<GamingPlatform.Domain.Models.Game>;
+    var user = ViewBag.User as GamingPlatform.Domain.Identity.GamingPlatformUser;
+}
+
+<h2>@Model.UserName</h2>
+
+<div class="mb-4">
+    <h4>Profile</h4>
+    <p><strong>Username:</strong> @Model.UserName</p>
+    <p><strong>Email:</strong> @Model.Email</p>
+    <p><strong>Bio:</strong> @Model.Bio</p>
+    <img src="@Model.ProfilePictureUrl" alt="Profile Picture" width="100" class="rounded" />
+</div>
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <h4>Wishlist</h4>
+    <a asp-controller="Wishlists" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-warning btn-sm">Wishlist</a>
+</div>
+@if (user.Id != Model.Id)
+{
+    <div class="mb-4">
+        @if (!isFriend)
+        {
+            <form asp-controller="Friends" asp-action="AddFriend" method="post">
+                <input type="hidden" name="requestId" value="@Model.Id" />
+                <button type="submit" class="btn btn-success btn-sm">Add Friend</button>
+            </form>
+        }
+        else
+        {
+            <div class="alert alert-info">You are friends with this person.</div>
+        }
+        @if (!isBlocked)
+        {
+            <form asp-controller="Friends" asp-action="BlockFriend" method="post">
+                <input type="hidden" name="requestId" value="@Model.Id" />
+                <button type="submit" class="btn btn-success btn-sm">Block Person</button>
+            </form>
+        }
+    </div>
+
+}
+
+<div class="mb-4">
+    <h4>Friends</h4>
+    @if (friends != null && friends.Any())
+    {
+        <ul class="list-group">
+            @foreach (var f in friends)
+            {
+                <li class="list-group-item">@f.UserName</li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No friends yet.</p>
+    }
+</div>
+
+<div class="row g-4">
+    @if (games != null)
+    {
+        @foreach (var game in games)
+        {
+            <div class="col-md-3">
+                <div class="game-card">
+                    <img src="@game.CoverImageUrl" alt="@game.Title" />
+                    <div class="p-3">
+                        <h5>@game.Title</h5>
+                        <small>@game.Genre • @game.Platform</small>
+                        <p class="mt-2 price">
+                            @(game.Price == 0 ? "Free to Play" : $"${game.Price}")
+                        </p>
+                        <p class="mt-1 text-light small"><strong>System Requirements:</strong> @game.SystemRequirements</p>
+                        <a asp-controller="Games" asp-action="Details" asp-route-id="@game.Id" class="btn btn-sm btn-outline-light w-100">
+                            View Game
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <p>No games.</p>
+    }
+</div>
+

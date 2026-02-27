@@ -20,6 +20,28 @@ namespace GamingPlatform.Service.Implementations
             _friendRepository = friendRepository;
             _userManager = userManager;
         }
+        public bool SendFriendRequest(string userId, Guid friendUsername)
+        {
+            // Find the user by username
+            var friend = _userManager.Users.FirstOrDefault(u => u.UserName.Equals(friendUsername));
+            if (friend == null || friend.Id == userId)
+                return false;
+
+            // Check if a friend request or friendship already exists
+            bool exists = _friendRepository.GetAll(f => f).Any(f =>
+                (f.UserId == userId && f.FriendId == friend.Id) ||
+                (f.UserId == friend.Id && f.FriendId == userId));
+
+            if (exists) return false;
+
+            // Create new friend request
+            _friendRepository.Insert(new Friend(userId,
+                friend.Id,
+                FriendshipStatus.Pending,
+                DateTime.UtcNow));
+
+            return true;
+        }
 
         public void AcceptFriendRequest(Guid friendRequestId, string userId)
         {
@@ -52,31 +74,7 @@ namespace GamingPlatform.Service.Implementations
                 .ToList();
         }
 
-        public bool SendFriendRequest(string userId, string friendUsername)
-        {
-            // Find the user by username
-            var friend = _userManager.Users.FirstOrDefault(u => u.UserName == friendUsername);
-            if (friend == null || friend.Id == userId)
-                return false;
 
-            // Check if a friend request or friendship already exists
-            bool exists = _friendRepository.GetAll(f => f).Any(f =>
-                (f.UserId == userId && f.FriendId == friend.Id) ||
-                (f.UserId == friend.Id && f.FriendId == userId));
-
-            if (exists) return false;
-
-            // Create new friend request
-            _friendRepository.Insert(new Friend
-            {
-                UserId = userId,
-                FriendId = friend.Id,
-                Status = FriendshipStatus.Pending,
-                CreatedAt = DateTime.UtcNow
-            });
-
-            return true;
-        }
 
         public List<Friend> GetPendingRequests(string userId)
         {
@@ -84,7 +82,40 @@ namespace GamingPlatform.Service.Implementations
                 .Where(f => f.FriendId == userId && f.Status == FriendshipStatus.Pending)
                 .ToList();
         }
-        
 
+        public void RemoveFriend(string userId, Guid friendId)
+        {
+            Friend friendship = _friendRepository.Get(
+                selector: x => x,
+                predicate: x =>
+                    x.UserId == userId && x.FriendId.Equals(friendId)
+            );
+            _friendRepository.Delete(friendship);
+        }
+
+        public void BlockFriend(string userId, Guid friendId)
+        {
+            Friend? friendship = _friendRepository.Get(
+                selector: x => x,
+                predicate: x =>
+                    x.UserId == userId && x.FriendId.Equals(friendId)
+            );
+            if (friendship == null)
+            {
+                Friend newFriendship = new Friend(userId, friendId.ToString(), FriendshipStatus.Blocked, DateTime.Now);
+                _friendRepository.Insert(newFriendship);
+            }
+            else
+            {
+                friendship.Status = FriendshipStatus.Blocked;
+                _friendRepository.Update(friendship);
+            }
+        }
+
+        public bool IsBlocked(string userId, Guid friendId)
+        {
+            return _friendRepository.GetAll(f => f)
+                .Any(f => f.UserId == userId && f.FriendId.Equals(friendId) && f.Status == FriendshipStatus.Blocked);
+        }
     }
 }

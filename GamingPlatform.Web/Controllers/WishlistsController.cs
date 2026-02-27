@@ -1,9 +1,11 @@
 ﻿using GamingPlatform.Domain.DTO;
+using GamingPlatform.Domain.Identity;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
 using GamingPlatform.Service.Implementations;
 using GamingPlatform.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -15,22 +17,32 @@ using System.Threading.Tasks;
 
 namespace GamingPlatform.Web.Controllers
 {
+    [Authorize]
     public class WishlistsController : Controller
     {
         private readonly IWishlistService _wishlistService;
         private readonly ILibraryService _libraryService;
-        public WishlistsController(IWishlistService wishlistService, ILibraryService libraryService)
+        private readonly UserManager<GamingPlatformUser> _userManager;
+
+        public WishlistsController(IWishlistService wishlistService, ILibraryService libraryService, UserManager<GamingPlatformUser> userManager)
         {
             _wishlistService = wishlistService;
             _libraryService = libraryService;
+            _userManager = userManager;
         }
 
         [HttpPost]
-        public IActionResult AddToWishlist(Guid gameId)
+        public async Task<IActionResult> AddToWishlist(Guid gameId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
+            var user = await _userManager.FindByIdAsync(userId);
+            if (!await _userManager.IsEmailConfirmedAsync(user))
+            {
+                TempData["Verified"] = "Please verify your email to access all features.";
+                return RedirectToAction("Details", "Games");
+            }
 
             // Add the game to the user's wishlist
             _wishlistService.AddGameToWishlist(userId, gameId);
@@ -70,47 +82,38 @@ namespace GamingPlatform.Web.Controllers
         }
 
 
-        // GET: Wishlists/Details/5
-        //public async Task<IActionResult> Details(Guid? id)
-        //{
-        //    if (id == null)
-        //    {
-        //        return NotFound();
-        //    }
+        //GET: Wishlists/Details/5
+        public async Task<IActionResult> Details(string id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
 
-        //    var wishlist = await _context.Wishlists
-        //        .FirstOrDefaultAsync(m => m.Id == id);
-        //    if (wishlist == null)
-        //    {
-        //        return NotFound();
-        //    }
+            var games = _wishlistService.GetAllGamesFromWishlist(id);
+            var gameDtos = games.Select(g => new GameDto
+            {
+                Id = g.Id,
+                Title = g.Title,
+                Description = g.Description,
+                Genre = g.Genre,
+                Platform = g.Platform,
+                Price = g.Price,
+                CoverImageUrl = g.CoverImageUrl,
+                SystemRequirements = g.SystemRequirements,
+                Developers = g.GameDevelopers?
+                         .Select(d => new DevDto { Id = d.DevId, Name = d.Developer?.StudioName ?? "Unknown" })
+                         .ToList() ?? new List<DevDto>(),
+                Achievements = g.Achievements?
+                        .Select(a => new AchievementDto { Id = a.Id, Name = a.Name, Description = a.Description })
+                        .ToList() ?? new List<AchievementDto>(),
+                Rating = g.Reviews?.Any() == true ? g.Reviews.Average(r => r.Score) : (double?)null,
+                InWishlist = _wishlistService.IsGameInWishlist(id, g.Id),
+                InLibrary = _libraryService.IsGameInLibrary(id, g.Id)
+            }).ToList();
 
-        //    return View(wishlist);
-        //}
-
-        //// GET: Wishlists/Create
-        //public IActionResult Create()
-        //{
-        //    return View();
-        //}
-
-        // POST: Wishlists/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> Create([Bind("GamerId,GameId,Id")] Wishlist wishlist)
-        //{
-        //    if (ModelState.IsValid)
-        //    {
-        //        wishlist.Id = Guid.NewGuid();
-        //        _context.Add(wishlist);
-        //        await _context.SaveChangesAsync();
-        //        return RedirectToAction(nameof(Index));
-        //    }
-        //    return View(wishlist);
-        //}
-
+            return View(gameDtos);
+        }
         // GET: Wishlists/Edit/5
         //public async Task<IActionResult> Edit(Guid? id)
         //{

@@ -1,4 +1,5 @@
 ﻿using GamingPlatform.Domain.DTO;
+using GamingPlatform.Domain.Email;
 using GamingPlatform.Domain.Identity;
 using GamingPlatform.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -12,36 +13,36 @@ namespace GamingPlatform.Web.Controllers
     {
         private readonly UserManager<GamingPlatformUser> _userManager;
         private readonly IFriendService _friendService;
+        private readonly IGameService _gameService;
 
-        public AccountController(UserManager<GamingPlatformUser> userManager, IFriendService friendService)
+        public AccountController(UserManager<GamingPlatformUser> userManager, IFriendService friendService, IGameService gameService)
         {
             _userManager = userManager;
             _friendService = friendService;
+            _gameService = gameService;
         }
-
-        [Authorize]
-        public IActionResult Index()
+        public async Task<IActionResult> Edit()
         {
             var user = _userManager.GetUserAsync(User).Result;
             if (user == null) return NotFound();
+            
             var friends = _friendService.GetFriends(user.Id);
             ViewBag.Friends = friends;
-            return View(user);
-        }
-        public IActionResult Edit()
-        {
-            var user = _userManager.GetUserAsync(User).Result;
-            if (user == null) return NotFound();
-
             return View(user);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Edit(GamingPlatformUser model)
+        public async Task<IActionResult> Edit(GamingPlatformUser model)
         {
             var user = _userManager.GetUserAsync(User).Result;
             if (user == null) return NotFound();
+            if (!_userManager.IsEmailConfirmedAsync(user).Result)
+            {
+                TempData["Verified"] = "Please verify your email to access all features.";
+                ViewBag.Friends = _friendService.GetFriends(user.Id);
+                return View(model);
+            }
 
             // Update fields
             user.Email = model.Email;
@@ -60,7 +61,8 @@ namespace GamingPlatform.Web.Controllers
                 ModelState.AddModelError("", error.Description);
             }
             var pendingRequests = _friendService.GetPendingRequests(user.Id); // implement this
-            ViewBag.PendingRequests = pendingRequests.Select(r => new {
+            ViewBag.PendingRequests = pendingRequests.Select(r => new
+            {
                 Id = r.Id,
                 SenderUsername = _userManager.Users.FirstOrDefault(u => u.Id == r.UserId)?.UserName
             }).ToList();
@@ -68,18 +70,29 @@ namespace GamingPlatform.Web.Controllers
 
             return View(model);
         }
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult AddFriend(string friendUsername)
+        public IActionResult Details(string requestId)
         {
-            var user = _userManager.GetUserAsync(User).Result;
+            var loggedInUser = _userManager.GetUserAsync(User).Result;
+            var user = _userManager.Users
+                .FirstOrDefault(u => u.UserName == requestId || u.Email == requestId);
             if (user == null) return NotFound();
-
-            bool success = _friendService.SendFriendRequest(user.Id, friendUsername);
-            TempData["FriendMessage"] = success ? "Friend request sent!" : "Unable to send request.";
-
-            return RedirectToAction(nameof(Index));
+            if (_friendService.IsBlocked(loggedInUser.Id, Guid.Parse(user.Id)))
+            {
+                TempData["Blocked"] = "This user is blocked.";
+                return RedirectToAction(nameof(Index));
+            }
+            
+            var friends = _friendService.GetFriends(user.Id);
+            ViewBag.Friends = friends;
+            bool isFriend = friends.Any(f => f.Id == loggedInUser.Id);
+            bool isBlocked = _friendService.IsBlocked(loggedInUser.Id, Guid.Parse(user.Id));
+            ViewBag.Blocked = isBlocked;
+            ViewBag.IsFriend = isFriend;
+            var games = _gameService.GetGameById(Guid.Parse(user.Id));
+            ViewBag.Games = games;
+            ViewBag.User = loggedInUser;
+            return View(user);
         }
-
+       
     }
 }

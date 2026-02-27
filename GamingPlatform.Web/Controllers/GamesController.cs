@@ -1,9 +1,11 @@
 ﻿using GamingPlatform.Domain.DTO;
+using GamingPlatform.Domain.Identity;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
 using GamingPlatform.Service.Implementations;
 using GamingPlatform.Service.Interfaces;
 using Humanizer.Localisation;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -20,13 +22,17 @@ namespace GamingPlatform.Web.Controllers
         private readonly IGameService _gameService;
         private readonly ILibraryService _libraryService;
         private readonly IWishlistService _wishlistService;
+        private readonly UserManager<GamingPlatformUser> _userManager;
 
-        public GamesController(IGameService gameService, ILibraryService libraryService, IWishlistService wishlistService)
+        public GamesController(IGameService gameService, ILibraryService libraryService, IWishlistService wishlistService, UserManager<GamingPlatformUser> userManager)
         {
             _gameService = gameService;
             _libraryService = libraryService;
             _wishlistService = wishlistService;
+            _userManager = userManager;
         }
+
+
 
         // GET: Games
         public IActionResult Index(string genre, string filter)
@@ -95,40 +101,45 @@ namespace GamingPlatform.Web.Controllers
                     }
 
                     return View(gameDto);
-           }
+        }
 
-        //    // GET: Games/Create
-        //    public IActionResult Create()
+        // GET: Games/Create
+        //public IActionResult Create()
+        //{
+        //    return View();
+        //}
+
+        // POST: Games/Create
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        //[HttpPost]
+        //[ValidateAntiForgeryToken]
+        //public async Task<IActionResult> Create([Bind("Title,Description,Genre,ReleaseDate,Price,Platform,CoverImageUrl,Id")] Game game)
+        //{
+        //    var user = await _userManager.GetUserAsync(User);
+        //    if (!await _userManager.IsEmailConfirmedAsync(user))
         //    {
-        //        return View();
+        //        TempData["Verified"] = "Please verify your email to access all features.";
+        //        return RedirectToAction("Index", "Account");
         //    }
-
-        //    // POST: Games/Create
-        //    // To protect from overposting attacks, enable the specific properties you want to bind to.
-        //    // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        //    [HttpPost]
-        //    [ValidateAntiForgeryToken]
-        //    public async Task<IActionResult> Create([Bind("Title,Description,Genre,ReleaseDate,Price,Platform,CoverImageUrl,Id")] Game game)
+        //    if (ModelState.IsValid)
         //    {
-        //        if (ModelState.IsValid)
-        //        {
-        //            game.Id = Guid.NewGuid();
-        //            _context.Add(game);
-        //            await _context.SaveChangesAsync();
-        //            return RedirectToAction(nameof(Index));
-        //        }
-        //        return View(game);
+        //        game.Id = Guid.NewGuid();
+        //        _gameService.AddGame(game);
+        //        return RedirectToAction(nameof(Index));
         //    }
+        //    return View(game);
+        //}
 
-        //    // GET: Games/Edit/5
-        //    public async Task<IActionResult> Edit(Guid? id)
+        //    //    // GET: Games/Edit/5
+        //        public async Task<IActionResult> Edit(Guid? id)
         //    {
         //        if (id == null)
         //        {
         //            return NotFound();
         //        }
 
-        //        var game = await _context.Games.FindAsync(id);
+        //        var game = _gameService.GetGameById(id.Value);
         //        if (game == null)
         //        {
         //            return NotFound();
@@ -147,66 +158,69 @@ namespace GamingPlatform.Web.Controllers
         //        {
         //            return NotFound();
         //        }
+    //    if (!await _userManager.IsEmailConfirmedAsync(user))
+    //        {
+    //            TempData["Verified"] = "Please verify your email to access all features.";
+    //            return RedirectToAction("Index", "Account");
+    //}
 
-        //        if (ModelState.IsValid)
-        //        {
-        //            try
-        //            {
-        //                _context.Update(game);
-        //                await _context.SaveChangesAsync();
-        //            }
-        //            catch (DbUpdateConcurrencyException)
-        //            {
-        //                if (!GameExists(game.Id))
-        //                {
-        //                    return NotFound();
-        //                }
-        //                else
-        //                {
-        //                    throw;
-        //                }
-        //            }
-        //            return RedirectToAction(nameof(Index));
-        //        }
-        //        return View(game);
-        //    }
+    //        if (ModelState.IsValid)
+    //        {
+    //            try
+    //            {
+    //                _gameService.UpdateGame(game);
+    //            }
+    //            catch (DbUpdateConcurrencyException)
+    //            {
+    //                if (!GameExists(game.Id))
+    //                {
+    //                    return NotFound();
+    //                }
+    //                else
+    //                {
+    //                    throw;
+    //                }
+    //            }
+    //            return RedirectToAction(nameof(Index));
+    //        }
+    //        return View(game);
+    //    }
 
-        //    // GET: Games/Delete/5
-        //    public async Task<IActionResult> Delete(Guid? id)
-        //    {
-        //        if (id == null)
-        //        {
-        //            return NotFound();
-        //        }
+    //    // GET: Games/Delete/5
+    //    public async Task<IActionResult> Delete(Guid? id)
+    //    {
+    //        if (id == null)
+    //        {
+    //            return NotFound();
+    //        }
 
-        //        var game = await _context.Games
-        //            .FirstOrDefaultAsync(m => m.Id == id);
-        //        if (game == null)
-        //        {
-        //            return NotFound();
-        //        }
+    //        var game = await _context.Games
+    //            .FirstOrDefaultAsync(m => m.Id == id);
+    //        if (game == null)
+    //        {
+    //            return NotFound();
+    //        }
 
-        //        return View(game);
-        //    }
+    //        return View(game);
+    //    }
 
-        //    // POST: Games/Delete/5
-        //    [HttpPost, ActionName("Delete")]
-        //    [ValidateAntiForgeryToken]
-        //    public async Task<IActionResult> DeleteConfirmed(Guid id)
-        //    {
-        //        var game = await _context.Games.FindAsync(id);
-        //        if (game != null)
-        //        {
-        //            _context.Games.Remove(game);
-        //        }
+    //    // POST: Games/Delete/5
+    //    [HttpPost, ActionName("Delete")]
+    //    [ValidateAntiForgeryToken]
+    //    public async Task<IActionResult> DeleteConfirmed(Guid id)
+    //    {
+    //        var game = _gameService.GetGameById(id);
+    //        if (game != null)
+    //        {
+    //            _gameService.DeleteGame(id);
+    //        }
+    //if (!await _userManager.IsEmailConfirmedAsync(user))
+    //        {
+    //            TempData["Verified"] = "Please verify your email to access all features.";
+    //            return RedirectToAction("Index", "Account");
+    //}
 
-        //        await _context.SaveChangesAsync();
-        //        return RedirectToAction(nameof(Index));
-        //    }
-
-        //    private bool GameExists(Guid id)
-        //    {
-        //        return _context.Games.Any(e => e.Id == id);
-        //    }
-    }
+    //        return RedirectToAction(nameof(Index));
+    //    }
+}
 }
