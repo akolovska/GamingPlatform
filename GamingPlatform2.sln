@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.13.35919.96
+# Visual Studio Version 18
+VisualStudioVersion = 18.10.12224.181
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GamingPlatform.Domain", "GamingPlatform.Domain\GamingPlatform.Domain.csproj", "{AF585EF4-088D-4E38-B634-79CDB593A2FF}"
 EndProject
@@ -10,6 +10,11 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GamingPlatform.Repository", "GamingPlatform.Repository\GamingPlatform.Repository.csproj", "{6E8C5A1A-A45B-4277-92F9-4C0D953966DD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GamingPlatform.Service", "GamingPlatform.Service\GamingPlatform.Service.csproj", "{3DC9F12D-AEC6-40F0-8574-ABB0BD93F18B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0156A6E1-F4B9-4B7D-8B3C-AE0A20BDC3CD}"
+	ProjectSection(SolutionItems) = preProject
+		CLAUDE.md = CLAUDE.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

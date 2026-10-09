@@ -1,94 +1,112 @@
-﻿@model GamingPlatform.Domain.Identity.GamingPlatformUser
+@using GamingPlatform.Web.Helpers
+@using GamingPlatform.Domain.DTO
+@model GamingPlatform.Domain.Identity.GamingPlatformUser
 @{
-    ViewData["Title"] = "My Account";
-    var friends = ViewBag.Friends as List<GamingPlatform.Domain.Identity.GamingPlatformUser>;
-    var isBlocked = ViewBag.IsBlocked as bool? ?? false;
-    var isFriend = ViewBag.IsFriend as bool? ?? false;  
-    var games = ViewBag.Games as List<GamingPlatform.Domain.Models.Game>;
-    var user = ViewBag.User as GamingPlatform.Domain.Identity.GamingPlatformUser;
+    ViewData["Title"] = Model.UserName;
+    var friends = ViewBag.Friends as List<GamingPlatform.Domain.Identity.GamingPlatformUser> ?? new();
+    var games = ViewBag.Games as List<GameDto> ?? new();
+    bool isFriend = ViewBag.IsFriend as bool? ?? false;
+    bool requestSent = ViewBag.RequestSent as bool? ?? false;
+    Guid? incomingId = ViewBag.IncomingRequestId as Guid?;
+    bool canViewWishlist = ViewBag.CanViewWishlist as bool? ?? false;
 }
 
-<h2>@Model.UserName</h2>
+<section class="profile-banner mb-4">
+    <img src="@AvatarHelper.Resolve(Model.ProfilePictureUrl)" alt="Profile picture" class="avatar-lg" />
+    <div class="flex-grow-1">
+        <h2 class="mb-1">@Model.UserName @if (isFriend) { <span class="badge-pill align-middle ms-1" style="color:#a4d007">&#10003; Friends</span> }</h2>
+        <p class="mb-3">@(string.IsNullOrWhiteSpace(Model.Bio) ? "No bio yet." : Model.Bio)</p>
+        <div class="d-flex flex-wrap gap-4 small">
+            <div><span class="fs-5 fw-bold text-white">@games.Count</span> <span class="text-muted">games</span></div>
+            <div><span class="fs-5 fw-bold text-white">@friends.Count</span> <span class="text-muted">friends</span></div>
+        </div>
+    </div>
 
-<div class="mb-4">
-    <h4>Profile</h4>
-    <p><strong>Username:</strong> @Model.UserName</p>
-    <p><strong>Email:</strong> @Model.Email</p>
-    <p><strong>Bio:</strong> @Model.Bio</p>
-    <img src="@Model.ProfilePictureUrl" alt="Profile Picture" width="100" class="rounded" />
-</div>
-<div class="mb-4 d-flex justify-content-between align-items-center">
-    <h4>Wishlist</h4>
-    <a asp-controller="Wishlists" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-warning btn-sm">Wishlist</a>
-</div>
-@if (user.Id != Model.Id)
-{
-    <div class="mb-4">
-        @if (!isFriend)
+    <div class="d-flex flex-column gap-2" style="min-width:150px">
+        @if (isFriend)
         {
-            <form asp-controller="Friends" asp-action="AddFriend" method="post">
+            <form asp-controller="Friends" asp-action="RemoveFriend" method="post" data-confirm="Remove @Model.UserName from your friends?">
                 <input type="hidden" name="requestId" value="@Model.Id" />
-                <button type="submit" class="btn btn-success btn-sm">Add Friend</button>
+                <button type="submit" class="btn btn-outline-secondary btn-sm w-100">Remove friend</button>
+            </form>
+        }
+        else if (requestSent)
+        {
+            <button class="btn btn-secondary btn-sm w-100" disabled>Request sent</button>
+        }
+        else if (incomingId.HasValue)
+        {
+            <form asp-controller="Friends" asp-action="AcceptFriend" method="post">
+                <input type="hidden" name="requestId" value="@incomingId" />
+                <button type="submit" class="btn btn-success btn-sm w-100">Accept request</button>
+            </form>
+            <form asp-controller="Friends" asp-action="DeclineFriend" method="post">
+                <input type="hidden" name="requestId" value="@incomingId" />
+                <button type="submit" class="btn btn-outline-secondary btn-sm w-100">Decline</button>
             </form>
         }
         else
         {
-            <div class="alert alert-info">You are friends with this person.</div>
-        }
-        @if (!isBlocked)
-        {
-            <form asp-controller="Friends" asp-action="BlockFriend" method="post">
-                <input type="hidden" name="requestId" value="@Model.Id" />
-                <button type="submit" class="btn btn-success btn-sm">Block Person</button>
+            <form asp-controller="Friends" asp-action="AddFriend" method="post">
+                <input type="hidden" name="username" value="@Model.UserName" />
+                <button type="submit" class="btn btn-success btn-sm w-100">Add friend</button>
             </form>
         }
-    </div>
 
-}
-
-<div class="mb-4">
-    <h4>Friends</h4>
-    @if (friends != null && friends.Any())
-    {
-        <ul class="list-group">
-            @foreach (var f in friends)
-            {
-                <li class="list-group-item">@f.UserName</li>
-            }
-        </ul>
-    }
-    else
-    {
-        <p>No friends yet.</p>
-    }
-</div>
-
-<div class="row g-4">
-    @if (games != null)
-    {
-        @foreach (var game in games)
+        @if (canViewWishlist)
         {
-            <div class="col-md-3">
-                <div class="game-card">
-                    <img src="@game.CoverImageUrl" alt="@game.Title" />
-                    <div class="p-3">
-                        <h5>@game.Title</h5>
-                        <small>@game.Genre • @game.Platform</small>
-                        <p class="mt-2 price">
-                            @(game.Price == 0 ? "Free to Play" : $"${game.Price}")
-                        </p>
-                        <p class="mt-1 text-light small"><strong>System Requirements:</strong> @game.SystemRequirements</p>
-                        <a asp-controller="Games" asp-action="Details" asp-route-id="@game.Id" class="btn btn-sm btn-outline-light w-100">
-                            View Game
-                        </a>
+            <a asp-controller="Wishlists" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">Wishlist</a>
+        }
+
+        <form asp-controller="Friends" asp-action="BlockFriend" method="post"
+              data-confirm="Block @Model.UserName? They will be removed from your friends and won't be able to see your profile.">
+            <input type="hidden" name="requestId" value="@Model.Id" />
+            <button type="submit" class="btn btn-outline-danger btn-sm w-100">Block</button>
+        </form>
+    </div>
+</section>
+
+<ul class="nav nav-pills nav-pills-dark mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-games" type="button">Games <span class="badge-pill">@games.Count</span></button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-friends" type="button">Friends <span class="badge-pill">@friends.Count</span></button></li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="tab-games">
+        @if (games.Any())
+        {
+            <div class="row g-4">
+                @foreach (var game in games)
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <partial name="_GameCard" model="GameCardModel.From(game)" />
                     </div>
-                </div>
+                }
             </div>
         }
-    }
-    else
-    {
-        <p>No games.</p>
-    }
+        else
+        {
+            <div class="empty-state">No games.</div>
+        }
+    </div>
+    <div class="tab-pane fade" id="tab-friends">
+        @if (friends.Any())
+        {
+            <div class="row g-3">
+                @foreach (var f in friends)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <a asp-action="Details" asp-route-requestId="@f.UserName" class="panel friend-row text-decoration-none d-flex">
+                            <img src="@AvatarHelper.Resolve(f.ProfilePictureUrl)" class="avatar-sm" style="width:44px;height:44px" alt="" />
+                            <span class="fw-semibold text-white">@f.UserName</span>
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">No friends yet.</div>
+        }
+    </div>
 </div>
-

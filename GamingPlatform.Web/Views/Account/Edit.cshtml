@@ -1,66 +1,94 @@
-﻿@model GamingPlatform.Domain.Identity.GamingPlatformUser
+@model GamingPlatform.Domain.Identity.GamingPlatformUser
+@using GamingPlatform.Web.Helpers
 @{
     ViewData["Title"] = "Edit Profile";
     var friends = ViewBag.Friends as List<GamingPlatform.Domain.Identity.GamingPlatformUser>;
 }
 
-<div class="container mt-4">
-    <h2>Edit Profile</h2>
+<div class="page-header">
+    <h2>Edit profile</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">&larr; Back to profile</a>
+</div>
 
-    <form asp-action="Edit" method="post">
-        <div asp-validation-summary="All" class="text-danger"></div>
+<div class="row g-4">
+    <div class="col-lg-8">
+        <form asp-action="Edit" method="post" class="panel">
+            <h5 class="mb-3">Account</h5>
+            <div asp-validation-summary="All" class="alert alert-danger"></div>
 
-        <div class="mb-3">
-            <label asp-for="Email" class="form-label"></label>
-            <input asp-for="Email" class="form-control" />
-            <span asp-validation-for="Email" class="text-danger"></span>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Bio" class="form-label">Bio</label>
+                <textarea asp-for="Bio" class="form-control" rows="4"></textarea>
+                <span asp-validation-for="Bio" class="text-danger"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="WishlistVisibility" class="form-label">Who can see my wishlist</label>
+                <select asp-for="WishlistVisibility"
+                        asp-items="Html.GetEnumSelectList<GamingPlatform.Domain.Enum.WishlistVisibility>()"
+                        class="form-select"></select>
+            </div>
+
+            <button type="submit" class="btn btn-success">Save changes</button>
+            <a asp-action="Index" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+
+        <div class="panel mt-4">
+            <h5 class="mb-3">Friends</h5>
+            @if (friends != null && friends.Any())
+            {
+                <div class="list-group">
+                    @foreach (var friend in friends)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="friend-row">
+                                <img src="@AvatarHelper.Resolve(friend.ProfilePictureUrl)" class="avatar-sm" alt="" />
+                                @friend.UserName
+                            </span>
+                            <div class="d-flex gap-2">
+                                <form asp-controller="Friends" asp-action="RemoveFriend" method="post" data-confirm="Remove @friend.UserName from your friends?">
+                                    <input type="hidden" name="requestId" value="@friend.Id" />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Remove</button>
+                                </form>
+                                <form asp-controller="Friends" asp-action="BlockFriend" method="post" data-confirm="Block @friend.UserName?">
+                                    <input type="hidden" name="requestId" value="@friend.Id" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Block</button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No friends.</p>
+            }
         </div>
-
-        <div class="mb-3">
-            <label asp-for="Bio" class="form-label">Bio</label>
-            <textarea asp-for="Bio" class="form-control"></textarea>
-            <span asp-validation-for="Bio" class="text-danger"></span>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="ProfilePictureUrl" class="form-label">Profile Picture URL</label>
-            <input asp-for="ProfilePictureUrl" class="form-control" />
-            <span asp-validation-for="ProfilePictureUrl" class="text-danger"></span>
-        </div>
-
-        <button type="submit" class="btn btn-success">Save Changes</button>
-        <a asp-action="Index" class="btn btn-secondary ms-2">Cancel</a>
-
-    </form>
-    @if (TempData["Verified"] != null)
-    {
-        <div class="mt-2 alert alert-info">@TempData["Verified"]</div>
-    }
-    <div class="mb-4">
-        <h4>Remove Friends</h4>
-        @if (ViewBag.Friends != null)
-        {
-            <ul class="list-group">
-                @foreach (var friend in friends)
-                {
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        @friend.UserName
-                        <form asp-controller="Friends" asp-action="RemoveFriend" method="post">
-                            <input type="hidden" name="requestId" value="@friend.Id" />
-                            <button type="submit" class="btn btn-success btn-sm">Remove friend</button>
-                        </form>
-                        <form asp-controller="Friends" asp-action="BlockFriend" method="post">
-                            <input type="hidden" name="requestId" value="@friend.Id" />
-                            <button type="submit" class="btn btn-success btn-sm">Block friend</button>
-                        </form>
-                    </li>
-                }
-            </ul>
-        }
-        else
-        {
-            <p>No friends.</p>
-        }
     </div>
 
+    <div class="col-lg-4">
+        <div class="panel text-center">
+            <h5 class="mb-3 text-start">Profile picture</h5>
+            <img id="avatarPreview" src="@AvatarHelper.Resolve(Model.ProfilePictureUrl)" alt="" class="avatar-lg mb-3" style="width:128px;height:128px;border-radius:50%;object-fit:cover;border:3px solid var(--accent)" />
+
+            <form asp-action="UploadAvatar" method="post" enctype="multipart/form-data" class="mb-2">
+                <input type="file" id="avatarFile" name="avatarFile" accept=".jpg,.jpeg,.png,.webp" class="form-control mb-2" />
+                <button type="submit" class="btn btn-primary btn-sm w-100">Upload</button>
+            </form>
+
+            <form asp-action="RemoveAvatar" method="post" data-confirm="Remove your profile picture?">
+                <button type="submit" class="btn btn-outline-secondary btn-sm w-100">Remove picture</button>
+            </form>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

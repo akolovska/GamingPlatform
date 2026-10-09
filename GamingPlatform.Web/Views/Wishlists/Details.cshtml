@@ -1,39 +1,26 @@
-﻿@model IEnumerable<GamingPlatform.Domain.DTO.GameDto>
+@using GamingPlatform.Web.Helpers
+@model IEnumerable<GamingPlatform.Domain.DTO.GameDto>
 
 @{
-    ViewData["Title"] = "My Wishlist";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Wishlist";
 }
 
-<h2 class="mb-4">My Wishlist</h2>
+<div class="page-header">
+    <h2>Wishlist <small class="text-muted fs-6">@Model.Count() @(Model.Count() == 1 ? "game" : "games")</small></h2>
+    <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm">&larr; Back</a>
+</div>
 
 @if (!Model.Any())
 {
-    <p>Your wishlist is empty.</p>
+    <div class="empty-state"><span class="icon">&#9825;</span>This wishlist is empty.</div>
 }
 else
 {
-    <div class="row row-cols-1 row-cols-md-3 g-4">
+    <div class="row g-4">
         @foreach (var game in Model)
         {
-            <div class="col">
-                <div class="card h-100">
-                    @* Cover image *@
-                    <img src="@game.CoverImageUrl" class="card-img-top" alt="@game.Title" style="height:200px; object-fit:cover;">
-
-                    <div class="card-body">
-                        <h5 class="card-title">@game.Title</h5>
-                        <p class="card-text text-truncate">@game.Description</p>
-                        <p class="card-text"><small class="text-muted">@game.Genre | @game.Platform</small></p>
-                        <p class="card-text"><strong>Price:</strong> @(game.Price == 0 ? "Free" : $"${game.Price}")</p>
-
-                        @* Details button *@
-                        <a asp-controller="Games"
-                           asp-action="Details"
-                           asp-route-id="@game.Id"
-                           class="btn btn-primary">View Details</a>
-                    </div>
-                </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <partial name="_GameCard" model="GameCardModel.From(game)" />
             </div>
         }
     </div>

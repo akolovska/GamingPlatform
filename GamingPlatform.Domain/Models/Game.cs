@@ -10,7 +10,10 @@ namespace GamingPlatform.Domain.Models
     {
         public string? Title { get; set; }
         public string? Description { get; set; }
-        public string? Genre { get; set; }
+        public ICollection<GameGenre> GameGenres { get; set; } = new List<GameGenre>();
+        public string GenreNames => string.Join(", ",
+        GameGenres?.Where(x => x.Genre != null).Select(x => x.Genre.Name).OrderBy(n => n)
+        ?? Enumerable.Empty<string>());
         public DateTime? ReleaseDate { get; set; }
         public decimal? Price { get; set; }
         public string? Platform { get; set; }
@@ -21,5 +24,6 @@ namespace GamingPlatform.Domain.Models
         public ICollection<Wishlist> Wishlists { get; set; }
         public ICollection<Review> Reviews { get; set; }
         public ICollection<Achievement> Achievements { get; set; }
+        public bool IsDelisted { get; set; }
     }
 }

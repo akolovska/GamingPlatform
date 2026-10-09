@@ -1,52 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using GamingPlatform.Domain.Identity;
+using GamingPlatform.Domain.Models;
+using GamingPlatform.Repository.Data;
+using GamingPlatform.Service.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using GamingPlatform.Domain.Models;
-using GamingPlatform.Repository.Data;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace GamingPlatform.Web.Controllers
 {
     public class AchievementsController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IAchievementService _achievementService;
 
-        public AchievementsController(ApplicationDbContext context)
+        public AchievementsController(IAchievementService achievementService)
         {
-            _context = context;
-        }
-
-        // GET: Achievements
-        public async Task<IActionResult> Index()
-        {
-            return View(await _context.Achievements.ToListAsync());
-        }
-
-        // GET: Achievements/Details/5
-        public async Task<IActionResult> Details(Guid? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var achievement = await _context.Achievements
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (achievement == null)
-            {
-                return NotFound();
-            }
-
-            return View(achievement);
-        }
-
-        // GET: Achievements/Create
-        public IActionResult Create()
-        {
-            return View();
+            _achievementService = achievementService;
         }
 
         // POST: Achievements/Create
@@ -59,14 +32,13 @@ namespace GamingPlatform.Web.Controllers
             if (ModelState.IsValid)
             {
                 achievement.Id = Guid.NewGuid();
-                _context.Add(achievement);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                _achievementService.AddAchievement( achievement);
             }
-            return View(achievement);
+            return RedirectToAction("Details", "Games", new { id = achievement.GameId });
         }
 
         // GET: Achievements/Edit/5
+        [Authorize(Roles = Roles.DevOrAdmin)]
         public async Task<IActionResult> Edit(Guid? id)
         {
             if (id == null)
@@ -118,6 +90,7 @@ namespace GamingPlatform.Web.Controllers
         }
 
         // GET: Achievements/Delete/5
+        [Authorize(Roles = Roles.DevOrAdmin)]
         public async Task<IActionResult> Delete(Guid? id)
         {
             if (id == null)

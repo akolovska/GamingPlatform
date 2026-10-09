@@ -23,12 +23,14 @@ namespace GamingPlatform.Web.Controllers
         private readonly IWishlistService _wishlistService;
         private readonly ILibraryService _libraryService;
         private readonly UserManager<GamingPlatformUser> _userManager;
+        private readonly IFriendService _friendService;
 
-        public WishlistsController(IWishlistService wishlistService, ILibraryService libraryService, UserManager<GamingPlatformUser> userManager)
+        public WishlistsController(IWishlistService wishlistService, ILibraryService libraryService, UserManager<GamingPlatformUser> userManager, IFriendService friendService)
         {
             _wishlistService = wishlistService;
             _libraryService = libraryService;
             _userManager = userManager;
+            _friendService = friendService;
         }
 
         [HttpPost]
@@ -62,7 +64,7 @@ namespace GamingPlatform.Web.Controllers
                 Id = g.Id,
                 Title = g.Title,
                 Description = g.Description,
-                Genre = g.Genre,
+                Genre = g.GenreNames,
                 Platform = g.Platform,
                 Price = g.Price,
                 CoverImageUrl = g.CoverImageUrl,
@@ -85,33 +87,39 @@ namespace GamingPlatform.Web.Controllers
         //GET: Wishlists/Details/5
         public async Task<IActionResult> Details(string id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (string.IsNullOrEmpty(id)) return NotFound();
 
-            var games = _wishlistService.GetAllGamesFromWishlist(id);
+            var viewer = await _userManager.GetUserAsync(User);
+            if (viewer == null) return Challenge();
+
+            var owner = await _userManager.FindByIdAsync(id);
+            if (owner == null) return NotFound();
+
+            if (owner.Id == viewer.Id) return RedirectToAction(nameof(Index));
+
+            if (!_friendService.CanViewWishlist(owner, viewer.Id))
+                return View("Private", owner.UserName);   // or: return NotFound();
+
+            var games = _wishlistService.GetAllGamesFromWishlist(owner.Id)
+                .Where(g => !g.IsDelisted);
+
             var gameDtos = games.Select(g => new GameDto
             {
                 Id = g.Id,
                 Title = g.Title,
                 Description = g.Description,
-                Genre = g.Genre,
+                Genre = g.GenreNames,
                 Platform = g.Platform,
                 Price = g.Price,
                 CoverImageUrl = g.CoverImageUrl,
                 SystemRequirements = g.SystemRequirements,
-                Developers = g.GameDevelopers?
-                         .Select(d => new DevDto { Id = d.DevId, Name = d.Developer?.StudioName ?? "Unknown" })
-                         .ToList() ?? new List<DevDto>(),
-                Achievements = g.Achievements?
-                        .Select(a => new AchievementDto { Id = a.Id, Name = a.Name, Description = a.Description })
-                        .ToList() ?? new List<AchievementDto>(),
                 Rating = g.Reviews?.Any() == true ? g.Reviews.Average(r => r.Score) : (double?)null,
-                InWishlist = _wishlistService.IsGameInWishlist(id, g.Id),
-                InLibrary = _libraryService.IsGameInLibrary(id, g.Id)
+                // flags are for the VIEWER, not the wishlist owner
+                InWishlist = _wishlistService.IsGameInWishlist(viewer.Id, g.Id),
+                InLibrary = _libraryService.IsGameInLibrary(viewer.Id, g.Id)
             }).ToList();
 
+            ViewBag.OwnerName = owner.UserName;
             return View(gameDtos);
         }
         // GET: Wishlists/Edit/5

@@ -1,0 +1,16 @@
+﻿@page
+@model GamingPlatform.Web.Pages.SettingsModel
+@using GamingPlatform.Web.Helpers
+
+<h2>Settings</h2>
+
+<form method="post" asp-page-handler="UploadAvatar" enctype="multipart/form-data">
+    <img src="@AvatarHelper.Resolve(Model.CurrentUrl)" width="128" />
+    <input type="file" asp-for="AvatarFile" accept=".jpg,.jpeg,.png,.webp" />
+    <span asp-validation-for="AvatarFile"></span>
+    <button type="submit">Upload</button>
+</form>
+
+<form method="post" asp-page-handler="RemoveAvatar">
+    <button type="submit">Remove picture</button>
+</form>

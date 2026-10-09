@@ -12,7 +12,8 @@ namespace GamingPlatform.Service.Interfaces
         void AddDev(Dev dev);
         void UpdateDev(Dev dev);
         void DeleteDev(Guid id);
-        Dev GetDevById(Guid id);
+        Dev? GetDevById(Guid id);
+        Dev? GetDevByUserId(string userId);
         List<Dev> GetAllDevs();
     }
 }

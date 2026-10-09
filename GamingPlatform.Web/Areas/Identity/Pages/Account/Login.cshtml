@@ -1,0 +1,49 @@
+@page
+@model GamingPlatform.Web.Areas.Identity.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Log in";
+}
+
+<div class="auth-wrap">
+    <div class="auth-card">
+        <h2 class="mb-1">Welcome back</h2>
+        <p class="text-muted mb-4">Log in to access your library and friends.</p>
+
+        <form method="post">
+            <div asp-validation-summary="All" class="alert alert-danger"></div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Username" class="form-control" placeholder="Username" autocomplete="username" autofocus />
+                <label asp-for="Input.Username">Username</label>
+                <span asp-validation-for="Input.Username" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <div class="input-group">
+                    <div class="form-floating flex-grow-1">
+                        <input asp-for="Input.Password" class="form-control" placeholder="Password" autocomplete="current-password" style="border-top-right-radius:0;border-bottom-right-radius:0" />
+                        <label asp-for="Input.Password">Password</label>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary" data-toggle-password="#Input_Password" data-no-loading>Show</button>
+                </div>
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+
+            <div class="form-check mb-4">
+                <input asp-for="Input.RememberMe" class="form-check-input" />
+                <label asp-for="Input.RememberMe" class="form-check-label"></label>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 btn-lg">Log in</button>
+        </form>
+
+        <hr class="my-4" />
+        <div class="text-center text-muted">
+            New here? <a asp-area="Identity" asp-page="/Account/Register">Create an account</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

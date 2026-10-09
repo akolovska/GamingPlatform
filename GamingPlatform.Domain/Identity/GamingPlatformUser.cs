@@ -1,10 +1,11 @@
-﻿using System;
+﻿using GamingPlatform.Domain.Enum;
+using GamingPlatform.Domain.Models;
+using Microsoft.AspNetCore.Identity;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GamingPlatform.Domain.Models;
-using Microsoft.AspNetCore.Identity;
 
 namespace GamingPlatform.Domain.Identity
 {
@@ -12,11 +13,11 @@ namespace GamingPlatform.Domain.Identity
     {
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
-        public string DisplayUsername { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public string? ProfilePictureUrl { get; set; }
         public string? Bio { get; set; }
         public ICollection<Friend> FriendshipsSent { get; set; }
         public ICollection<Friend> FriendshipsReceived { get; set; }
+        public WishlistVisibility WishlistVisibility { get; set; } = WishlistVisibility.FriendsOnly;
     }
 }

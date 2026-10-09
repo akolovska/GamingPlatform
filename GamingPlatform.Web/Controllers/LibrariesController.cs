@@ -1,4 +1,5 @@
 ﻿using GamingPlatform.Domain.DTO;
+using GamingPlatform.Domain.Email;
 using GamingPlatform.Domain.Identity;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Stripe;
 using Stripe.Checkout;
 using System;
@@ -24,13 +26,15 @@ namespace GamingPlatform.Web.Controllers
         private readonly IGameService _gameService;
         private readonly IWishlistService _wishlistService;
         private readonly UserManager<GamingPlatformUser> _userManager;
+        private readonly StripeSettings _stripeSettings;
 
-        public LibrariesController(ILibraryService libraryService, IGameService gameService, IWishlistService wishlistService, UserManager<GamingPlatformUser> userManager)
+        public LibrariesController(ILibraryService libraryService, IGameService gameService, IWishlistService wishlistService, UserManager<GamingPlatformUser> userManager, IOptions<StripeSettings> stripeSettings)
         {
             _libraryService = libraryService;
             _gameService = gameService;
             _wishlistService = wishlistService;
             _userManager = userManager;
+            _stripeSettings = stripeSettings.Value;
         }
 
 
@@ -48,7 +52,7 @@ namespace GamingPlatform.Web.Controllers
                 Id = g.Id,
                 Title = g.Title ?? "Unknown",
                 Description = g.Description,
-                Genre = g.Genre,
+                Genre = g.GenreNames,
                 Platform = g.Platform,
                 Price = g.Price,
                 CoverImageUrl = g.CoverImageUrl,
@@ -92,7 +96,7 @@ namespace GamingPlatform.Web.Controllers
                 Id = libraryEntry.Id,
                 Title = libraryEntry.Title ?? "Unknown",
                 Description = libraryEntry.Description,
-                Genre = libraryEntry.Genre,
+                Genre = libraryEntry.GenreNames,
                 Platform = libraryEntry.Platform,
                 Price = libraryEntry.Price,
                 CoverImageUrl = libraryEntry.CoverImageUrl,
@@ -162,7 +166,7 @@ namespace GamingPlatform.Web.Controllers
                 SuccessUrl = Url.Action("PaymentSuccess", "Libraries", new { gameId = game.Id }, Request.Scheme),
                 CancelUrl = Url.Action("Details", "Games", new { id = game.Id }, Request.Scheme)
             };
-            StripeConfiguration.ApiKey = "sk_test_51RQSuVGamyUtSVoKBmOD9i5BRLIMh6MKrbQ6VI1yA6YOzlDkoAgkI1YaEZUKd8qkm4HiOD6oD4N2BYPh7P0ApxvW00SgfHUDnJ";
+            StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
             var service = new SessionService();
             Session session = service.Create(options);
 
@@ -184,6 +188,3 @@ namespace GamingPlatform.Web.Controllers
         }
     }
 }
-
-
-   

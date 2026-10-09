@@ -1,0 +1,33 @@
+@model GamingPlatform.Web.Helpers.GameCardModel
+@{
+    var meta = string.Join(" • ", new[] { Model.Genre, Model.Platform }.Where(s => !string.IsNullOrWhiteSpace(s)));
+    bool free = (Model.Price ?? 0) == 0;
+}
+<div class="game-card">
+    @if (Model.Owned)
+    {
+        <span class="owned-ribbon">In library</span>
+    }
+    <div class="cover">
+        @if (!string.IsNullOrEmpty(Model.Cover))
+        {
+            <img src="@Model.Cover" alt="@Model.Title" loading="lazy" />
+        }
+        else
+        {
+            <div class="cover-placeholder">No cover</div>
+        }
+    </div>
+    <div class="body">
+        <h3 class="title">
+            <a class="stretched-link-card text-reset" asp-controller="@Model.Controller" asp-action="@Model.Action" asp-route-id="@Model.Id">@Model.Title</a>
+        </h3>
+        @if (meta.Length > 0)
+        {
+            <div class="meta text-truncate" title="@meta">@meta</div>
+        }
+        <div class="mt-auto pt-2">
+            <span class="price-tag @(free ? "" : "paid")">@(free ? "Free to Play" : $"${Model.Price:0.00}")</span>
+        </div>
+    </div>
+</div>

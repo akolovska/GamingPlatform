@@ -1,0 +1,166 @@
+@model GamingPlatform.Domain.DTO.GameFormDto
+@{
+    var allGenres = ViewBag.AllGenres as List<GamingPlatform.Domain.Models.Genre> ?? new();
+    bool isCreate = ViewData["Mode"]?.ToString() == "Create";
+    var achievements = ViewBag.Achievements as List<GamingPlatform.Domain.Models.Achievement> ?? new();
+}
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+@if (!isCreate)
+{
+    <input type="hidden" asp-for="Id" />
+}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="panel">
+            <h5 class="mb-3">Basics</h5>
+
+            @if (isCreate && User.IsInRole("Admin"))
+            {
+                <div class="mb-3">
+                    <label asp-for="DevId" class="form-label">Studio</label>
+                    <select asp-for="DevId" asp-items="(SelectList)ViewBag.Studios" class="form-select">
+                        <option value="">-- Choose a studio --</option>
+                    </select>
+                    <span asp-validation-for="DevId" class="text-danger"></span>
+                </div>
+            }
+            else if (isCreate)
+            {
+                <div class="alert alert-info py-2">This game will be published under your studio.</div>
+            }
+
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" placeholder="Game title" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="5" maxlength="4000"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Genres</label>
+                @if (!allGenres.Any())
+                {
+                    <p class="text-muted mb-0">No genres exist yet. An admin needs to create some first.</p>
+                }
+                <div class="d-flex flex-wrap gap-2 genre-chips">
+                    @foreach (var g in allGenres)
+                    {
+                        <span>
+                            <input type="checkbox" name="GenreIds" value="@g.Id" id="genre_@g.Id" checked="@Model.GenreIds.Contains(g.Id)" />
+                            <label class="chip" for="genre_@g.Id">@g.Name</label>
+                        </span>
+                    }
+                </div>
+                <span asp-validation-for="GenreIds" class="text-danger"></span>
+            </div>
+
+            <div>
+                <label asp-for="SystemRequirements" class="form-label"></label>
+                <textarea asp-for="SystemRequirements" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="SystemRequirements" class="text-danger"></span>
+            </div>
+        </div>
+
+        @if (!isCreate)
+        {
+            <div class="panel mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Achievements</h5>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#add-achievement">
+                        Add achievement
+                    </button>
+                </div>
+
+                @if (achievements.Any())
+                {
+                    foreach (var achievement in achievements)
+                    {
+                        <div class="achievement">
+                            <div class="ico">&#127942;</div>
+                            <div>
+                                <div class="fw-semibold text-white">@achievement.Name</div>
+                                @if (!string.IsNullOrEmpty(achievement.Description))
+                                {
+                                    <div class="small text-muted">@achievement.Description</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="text-muted">No achievements yet.</p>
+                }
+
+                @* These fields belong to the "add-achievement-form" form in Edit.cshtml (form="..." attribute),
+                   so Save submits only the achievement, not the whole game. *@
+                <div class="collapse" id="add-achievement">
+                    <div class="mt-3">
+                        <div class="mb-3">
+                            <label for="ach-name" class="form-label">Name</label>
+                            <input id="ach-name" name="name" form="add-achievement-form" class="form-control" maxlength="100" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="ach-description" class="form-label">Description</label>
+                            <textarea id="ach-description" name="description" form="add-achievement-form" class="form-control" rows="2" maxlength="500"></textarea>
+                        </div>
+                        <button type="submit" form="add-achievement-form" class="btn btn-primary btn-sm">Save</button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="d-flex gap-2 mt-4">
+            @if (isCreate)
+            {
+                <button type="submit" class="btn btn-success">Create game</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-primary">Save changes</button>
+                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancel</a>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="panel mb-4">
+            <h5 class="mb-3">Cover</h5>
+            <div id="cover-preview" class="cover-preview mb-3">Cover preview</div>
+            <label asp-for="CoverImageUrl" class="form-label">Image URL</label>
+            <input asp-for="CoverImageUrl" class="form-control" placeholder="https://..." />
+            <span asp-validation-for="CoverImageUrl" class="text-danger"></span>
+        </div>
+
+        <div class="panel">
+            <h5 class="mb-3">Details</h5>
+            <div class="mb-3">
+                <label asp-for="Price" class="form-label"></label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input asp-for="Price" class="form-control" placeholder="0 = free" />
+                </div>
+                <span asp-validation-for="Price" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Platform" class="form-label"></label>
+                <input asp-for="Platform" class="form-control" placeholder="e.g. PC, Windows" />
+                <span asp-validation-for="Platform" class="text-danger"></span>
+            </div>
+            <div>
+                <label asp-for="ReleaseDate" class="form-label"></label>
+                <input asp-for="ReleaseDate" type="date" asp-format="{0:yyyy-MM-dd}" class="form-control" />
+                <span asp-validation-for="ReleaseDate" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+</div>
+

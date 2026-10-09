@@ -1,0 +1,9 @@
+@model string
+@{ ViewData["Title"] = "Private wishlist"; }
+<div class="empty-state mx-auto" style="max-width:520px">
+    <span class="icon">&#128274;</span>
+    <strong class="text-white">@Model</strong>'s wishlist is private.
+    <div class="mt-3">
+        <a asp-controller="Account" asp-action="Details" asp-route-requestId="@Model" class="btn btn-outline-secondary btn-sm">Back to profile</a>
+    </div>
+</div>

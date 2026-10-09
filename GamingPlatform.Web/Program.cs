@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.NewtonsoftJson;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
+DotNetEnv.Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -24,20 +25,40 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpClient();
 
-builder.Services.AddDefaultIdentity<GamingPlatformUser>(options => options.SignIn.RequireConfirmedAccount = false)
+builder.Services.AddDefaultIdentity<GamingPlatformUser>(options => options.SignIn.RequireConfirmedAccount = false).AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddControllersWithViews().AddNewtonsoftJson(options =>
     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore);
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddTransient<IGameService, GameService>();
-builder.Services.AddTransient<ILibraryService, LibraryService>();
-builder.Services.AddTransient<IWishlistService, WishlistService>();
-builder.Services.AddTransient<IFriendService, FriendService>();
+builder.Services.AddScoped<IGameService, GameService>();
+builder.Services.AddScoped<ILibraryService, LibraryService>();
+builder.Services.AddScoped<IWishlistService, WishlistService>();
+builder.Services.AddScoped<IFriendService, FriendService>();
+builder.Services.AddScoped<IGenreService, GenreService>();
+builder.Services.AddScoped<IDevService, DevService>();
+builder.Services.AddScoped<IAchievementService, AchievementService>();
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
-//builder.Services.AddTransient<IUserService, UserService>();
 
 var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+    var roles = new[] { Roles.Admin, Roles.User, Roles.Dev };
 
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            var result = await roleManager.CreateAsync(new IdentityRole(role));
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Could not create role '{role}': {errors}");
+            }
+        }
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -56,6 +77,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

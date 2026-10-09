@@ -20,36 +20,41 @@ namespace GamingPlatform.Service.Implementations
             _friendRepository = friendRepository;
             _userManager = userManager;
         }
-        public bool SendFriendRequest(string userId, Guid friendUsername)
+
+        // All rows between two users, in either direction
+        private List<Friend> Between(string a, string b) =>
+            _friendRepository.GetAll(f => f)
+                .Where(f => (f.UserId == a && f.FriendId == b) ||
+                            (f.UserId == b && f.FriendId == a))
+                .ToList();
+
+        public bool SendFriendRequest(string userId, string targetUserId)
         {
-            // Find the user by username
-            var friend = _userManager.Users.FirstOrDefault(u => u.UserName.Equals(friendUsername));
-            if (friend == null || friend.Id == userId)
-                return false;
+            if (userId == targetUserId) return false;
+            if (!_userManager.Users.Any(u => u.Id == targetUserId)) return false;
 
-            // Check if a friend request or friendship already exists
-            bool exists = _friendRepository.GetAll(f => f).Any(f =>
-                (f.UserId == userId && f.FriendId == friend.Id) ||
-                (f.UserId == friend.Id && f.FriendId == userId));
+            var existing = Between(userId, targetUserId);
 
-            if (exists) return false;
+            // They already asked me -> just accept
+            var incoming = existing.FirstOrDefault(f =>
+                f.UserId == targetUserId && f.Status == FriendshipStatus.Pending);
+            if (incoming != null)
+            {
+                incoming.Status = FriendshipStatus.Accepted;
+                _friendRepository.Update(incoming);
+                return true;
+            }
 
-            // Create new friend request
-            _friendRepository.Insert(new Friend(userId,
-                friend.Id,
-                FriendshipStatus.Pending,
-                DateTime.UtcNow));
+            // Already friends, already pending, or blocked either way
+            if (existing.Any()) return false;
 
+            _friendRepository.Insert(new Friend(userId, targetUserId, FriendshipStatus.Pending, DateTime.UtcNow));
             return true;
         }
 
-        public void AcceptFriendRequest(Guid friendRequestId, string userId)
+        public void AcceptFriendRequest(Guid requestId, string userId)
         {
-            var request = _friendRepository.Get(
-                selector: x => x,
-                predicate: x => x.Id == friendRequestId
-            );
-
+            var request = _friendRepository.Get(x => x, x => x.Id == requestId);
             if (request != null && request.FriendId == userId && request.Status == FriendshipStatus.Pending)
             {
                 request.Status = FriendshipStatus.Accepted;
@@ -57,65 +62,92 @@ namespace GamingPlatform.Service.Implementations
             }
         }
 
-
+        public void DeclineFriendRequest(Guid requestId, string userId)
+        {
+            var request = _friendRepository.Get(x => x, x => x.Id == requestId);
+            if (request != null && request.FriendId == userId && request.Status == FriendshipStatus.Pending)
+                _friendRepository.Delete(request);
+        }
 
         public List<GamingPlatformUser> GetFriends(string userId)
         {
-            // Get all accepted friends
-            var acceptedFriendIds = _friendRepository.GetAll(f => f)
+            var ids = _friendRepository.GetAll(f => f)
                 .Where(f => f.Status == FriendshipStatus.Accepted &&
                             (f.UserId == userId || f.FriendId == userId))
                 .Select(f => f.UserId == userId ? f.FriendId : f.UserId)
                 .ToList();
 
-            // Use UserManager.Users to query users
-            return _userManager.Users
-                .Where(u => acceptedFriendIds.Contains(u.Id))
-                .ToList();
+            return _userManager.Users.Where(u => ids.Contains(u.Id)).ToList();
         }
 
-
-
-        public List<Friend> GetPendingRequests(string userId)
-        {
-            return _friendRepository.GetAll(f => f)
+        public List<Friend> GetPendingRequests(string userId) =>
+            _friendRepository.GetAll(f => f)
                 .Where(f => f.FriendId == userId && f.Status == FriendshipStatus.Pending)
                 .ToList();
+
+        public void RemoveFriend(string userId, string friendId)
+        {
+            foreach (var row in Between(userId, friendId).Where(f => f.Status == FriendshipStatus.Accepted))
+                _friendRepository.Delete(row);
         }
 
-        public void RemoveFriend(string userId, Guid friendId)
+        public void BlockFriend(string userId, string targetUserId)
         {
-            Friend friendship = _friendRepository.Get(
-                selector: x => x,
-                predicate: x =>
-                    x.UserId == userId && x.FriendId.Equals(friendId)
-            );
-            _friendRepository.Delete(friendship);
+            if (userId == targetUserId) return;
+
+            var rows = Between(userId, targetUserId);
+            bool alreadyBlocked = rows.Any(f => f.UserId == userId && f.Status == FriendshipStatus.Blocked);
+
+            // Remove friendship/pending rows, keep any existing blocks
+            foreach (var row in rows.Where(f => f.Status != FriendshipStatus.Blocked))
+                _friendRepository.Delete(row);
+
+            if (!alreadyBlocked)
+                _friendRepository.Insert(new Friend(userId, targetUserId, FriendshipStatus.Blocked, DateTime.UtcNow));
         }
 
-        public void BlockFriend(string userId, Guid friendId)
+        public void UnblockUser(string userId, string targetUserId)
         {
-            Friend? friendship = _friendRepository.Get(
-                selector: x => x,
-                predicate: x =>
-                    x.UserId == userId && x.FriendId.Equals(friendId)
-            );
-            if (friendship == null)
+            var row = Between(userId, targetUserId)
+                .FirstOrDefault(f => f.UserId == userId && f.Status == FriendshipStatus.Blocked);
+            if (row != null) _friendRepository.Delete(row);
+        }
+
+        public bool IsBlocked(string userId, string otherId) =>
+            _friendRepository.GetAll(f => f)
+                .Any(f => f.UserId == userId && f.FriendId == otherId && f.Status == FriendshipStatus.Blocked);
+
+        public bool IsBlockedEitherWay(string a, string b) =>
+            IsBlocked(a, b) || IsBlocked(b, a);
+
+        public List<GamingPlatformUser> GetBlockedUsers(string userId)
+        {
+            var ids = _friendRepository.GetAll(f => f)
+                .Where(f => f.UserId == userId && f.Status == FriendshipStatus.Blocked)
+                .Select(f => f.FriendId)
+                .ToList();
+
+            return _userManager.Users
+                .Where(u => ids.Contains(u.Id))
+                .OrderBy(u => u.UserName)
+                .ToList();
+        }
+        public Friend? GetPendingBetween(string userA, string userB) =>
+            Between(userA, userB).FirstOrDefault(f => f.Status == FriendshipStatus.Pending);
+
+        // FriendService
+        public bool CanViewWishlist(GamingPlatformUser owner, string viewerId)
+        {
+            if (owner.Id == viewerId) return true;                   // your own wishlist
+            if (IsBlockedEitherWay(owner.Id, viewerId)) return false; // blocked users never see it
+
+            return owner.WishlistVisibility switch
             {
-                Friend newFriendship = new Friend(userId, friendId.ToString(), FriendshipStatus.Blocked, DateTime.Now);
-                _friendRepository.Insert(newFriendship);
-            }
-            else
-            {
-                friendship.Status = FriendshipStatus.Blocked;
-                _friendRepository.Update(friendship);
-            }
-        }
-
-        public bool IsBlocked(string userId, Guid friendId)
-        {
-            return _friendRepository.GetAll(f => f)
-                .Any(f => f.UserId == userId && f.FriendId.Equals(friendId) && f.Status == FriendshipStatus.Blocked);
+                WishlistVisibility.Public => true,
+                WishlistVisibility.FriendsOnly => Between(owner.Id, viewerId)
+                    .Any(f => f.Status == FriendshipStatus.Accepted),
+                _ => false                                            // Private
+            };
         }
     }
 }

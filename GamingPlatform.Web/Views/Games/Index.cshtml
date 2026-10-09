@@ -1,59 +1,100 @@
-﻿@model IEnumerable<GamingPlatform.Domain.Models.Game>
+@using GamingPlatform.Web.Helpers
+@model IEnumerable<GamingPlatform.Domain.Models.Game>
 
 @{
     ViewData["Title"] = "Store";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var genres = ViewBag.Genres as List<GamingPlatform.Domain.Models.Genre> ?? new();
+    var trending = ViewBag.Trending as List<GamingPlatform.Domain.Models.Game> ?? new();
+    Guid? selectedGenreId = ViewBag.SelectedGenreId as Guid?;
+    string? selectedFilter = ViewBag.SelectedFilter as string;
+    var featured = trending.FirstOrDefault();
 }
 
-<style>
-    body { background:#1b1b1b; color:#eee; }
-    .filter-bar { background:#111; padding:15px; border-radius:8px; }
-    .game-card { background:#2a2a2a; border-radius:10px; overflow:hidden; transition:transform .2s; }
-    .game-card:hover { transform: scale(1.03); }
-    .game-card img { height:180px; object-fit:cover; width:100%; }
-    .price { font-weight:bold; color:#66c0f4; }
-</style>
-
-<h2 class="mb-3">Store</h2>
-
-<!-- FILTER BAR -->
-<form method="get" class="filter-bar mb-4 d-flex gap-2">
-    <select name="genre" class="form-select">
-        <option value="">All Genres</option>
-        <option value="Action">Action</option>
-        <option value="RPG">RPG</option>
-        <option value="Strategy">Strategy</option>
-    </select>
-
-    <select name="filter" class="form-select">
-        <option value="">All Games</option>
-        <option value="Free">Free to Play</option>
-        <option value="Popular">Most Popular</option>
-        <option value="Trending">Trending</option>
-    </select>
-
-    <button class="btn btn-primary">Apply</button>
-</form>
-
-<!-- GAMES GRID -->
-<div class="row g-4">
-    @foreach (var game in Model)
-    {
-        <div class="col-md-3">
-            <div class="game-card">
-                <img src="@game.CoverImageUrl" alt="@game.Title" />
-                <div class="p-3">
-                    <h5>@game.Title</h5>
-                    <small>@game.Genre • @game.Platform</small>
-                    <p class="mt-2 price">
-                        @(game.Price == 0 ? "Free to Play" : $"${game.Price}")
-                    </p>
-                    <p class="mt-1 text-light small"><strong>System Requirements:</strong> @game.SystemRequirements</p>
-                    <a asp-action="Details" asp-route-id="@game.Id" class="btn btn-sm btn-outline-light w-100">
-                        View Game
-                    </a>
-                </div>
+@if (featured != null)
+{
+    <section class="hero">
+        @if (!string.IsNullOrEmpty(featured.CoverImageUrl))
+        {
+            <div class="hero-bg" style="background-image:url('@featured.CoverImageUrl')"></div>
+        }
+        <div class="hero-body">
+            <span class="badge-pill mb-2">Featured &middot; trending this week</span>
+            <h1 class="display-5">@featured.Title</h1>
+            <p class="mb-3 col-lg-7 text-truncate" style="max-width:640px">@featured.Description</p>
+            <div class="d-flex align-items-center gap-3">
+                <a asp-action="Details" asp-route-id="@featured.Id" class="btn btn-primary">View game</a>
+                <span class="price-tag @((featured.Price ?? 0) == 0 ? "" : "paid")">
+                    @((featured.Price ?? 0) == 0 ? "Free to Play" : $"${featured.Price:0.00}")
+                </span>
             </div>
         </div>
+    </section>
+}
+
+<div class="page-header">
+    <h2>Store</h2>
+    @if (User.IsInRole("Admin") || User.IsInRole("Dev"))
+    {
+        <a asp-action="Create" class="btn btn-success">+ Add game</a>
     }
+</div>
+
+@if (trending.Count > 1)
+{
+    <div class="section-title">Trending this week</div>
+    <div class="scroller mb-2">
+        @foreach (var game in trending)
+        {
+            <div>
+                <partial name="_GameCard" model="GameCardModel.From(game)" />
+            </div>
+        }
+    </div>
+}
+
+<div class="section-title">Browse all</div>
+
+<div class="toolbar mb-4">
+    <div class="d-flex flex-wrap gap-2 flex-grow-1">
+        <a asp-action="Index" asp-route-filter="@selectedFilter"
+           class="chip @(selectedGenreId == null ? "active" : "")">All genres</a>
+        @foreach (var g in genres)
+        {
+            <a asp-action="Index" asp-route-genreId="@g.Id" asp-route-filter="@selectedFilter"
+               class="chip @(g.Id == selectedGenreId ? "active" : "")">@g.Name</a>
+        }
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <input id="game-search" type="search" class="form-control form-control-sm" style="width:200px"
+               placeholder="Filter by name..." autocomplete="off" />
+        <span id="chip-free" class="chip" role="button" tabindex="0">Free to play</span>
+        <select id="game-sort" class="form-select form-select-sm" style="width:auto">
+            <option value="default">Sort: Featured</option>
+            <option value="name">Name (A-Z)</option>
+            <option value="price-asc">Price: low to high</option>
+            <option value="price-desc">Price: high to low</option>
+            <option value="newest">Newest first</option>
+        </select>
+        <small id="result-count" class="text-muted"></small>
+    </div>
+</div>
+
+<div class="row g-4" id="game-grid">
+    @foreach (var game in Model)
+    {
+        <div class="col-6 col-md-4 col-lg-3"
+             data-title="@(game.Title?.ToLowerInvariant())"
+             data-meta="@(($"{game.GenreNames} {game.Platform}").ToLowerInvariant())"
+             data-price="@((game.Price ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))"
+             data-date="@game.ReleaseDate?.ToString("yyyy-MM-dd")">
+            <partial name="_GameCard" model="GameCardModel.From(game)" />
+        </div>
+    }
+</div>
+
+<div id="no-results" class="empty-state @(Model.Any() ? "d-none" : "")">
+    <span class="icon">&#127918;</span>
+    No games match your filters.
+    <div class="mt-3"><a asp-action="Index" class="btn btn-outline-secondary btn-sm">Reset filters</a></div>
 </div>

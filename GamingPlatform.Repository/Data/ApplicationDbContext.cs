@@ -21,35 +21,54 @@ namespace GamingPlatform.Repository.Data
         public virtual DbSet<Friend> Friends { get; set; }
         public virtual DbSet<Review> Reviews { get; set; }
         public virtual DbSet<GamerAchievement> GamerAchievements { get; set; }
+        public virtual DbSet<Genre> Genres { get; set; }
+        public virtual DbSet<GameGenre> GameGenres { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Dev>(e =>
+            {
+                e.HasOne(d => d.User)
+                 .WithMany()                        // no collection needed on the user
+                 .HasForeignKey(d => d.UserId)
+                 .OnDelete(DeleteBehavior.SetNull); // deleting the account keeps the studio and its games
 
-            modelBuilder.Entity<Friend>()
-        .HasKey(f => f.Id); // assuming BaseEntity.Id exists
+                // Optional: one studio per user (nulls are allowed multiple times)
+                e.HasIndex(d => d.UserId)
+                 .IsUnique()
+                 .HasFilter("[UserId] IS NOT NULL");
+            });
 
-            // Relationship: Friend.User (requester) → GamingPlatformUser
-            modelBuilder.Entity<Friend>()
-                .HasOne(f => f.User)
-                .WithMany(u => u.FriendshipsSent)
-                .HasForeignKey(f => f.UserId)
-                .OnDelete(DeleteBehavior.ClientCascade); // EF deletes automatically in code
+            modelBuilder.Entity<Friend>(e =>
+            {
+                e.HasOne(f => f.User)
+                 .WithMany(u => u.FriendshipsSent)
+                 .HasForeignKey(f => f.UserId)
+                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Relationship: Friend.FriendUser (receiver) → GamingPlatformUser
-            modelBuilder.Entity<Friend>()
-                .HasOne(f => f.FriendUser)
-                .WithMany(u => u.FriendshipsReceived)
-                .HasForeignKey(f => f.FriendId)
-                .OnDelete(DeleteBehavior.ClientCascade); // EF deletes automatically in code
+                e.HasOne(f => f.FriendUser)
+                 .WithMany(u => u.FriendshipsReceived)
+                 .HasForeignKey(f => f.FriendId)
+                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Optional: ensure CreatedAt is required
-            modelBuilder.Entity<Friend>()
-                .Property(f => f.CreatedAt)
-                .IsRequired();
+                e.HasIndex(f => new { f.UserId, f.FriendId }).IsUnique();
+            });
+
             modelBuilder.Entity<Game>()
                 .Property(g => g.Price)
                 .HasPrecision(18, 2);
 
-        }
+            modelBuilder.Entity<Genre>().HasIndex(g => g.Name).IsUnique();
+
+            modelBuilder.Entity<GameGenre>(e =>
+            {
+                e.HasOne(x => x.Game).WithMany(g => g.GameGenres)
+                 .HasForeignKey(x => x.GameId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(x => x.Genre).WithMany(g => g.GameGenres)
+                 .HasForeignKey(x => x.GenreId).OnDelete(DeleteBehavior.Restrict); // can't delete a genre in use
+                e.HasIndex(x => new { x.GameId, x.GenreId }).IsUnique();
+            });
+        }   
+
     }
 }

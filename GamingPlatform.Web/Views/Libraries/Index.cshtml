@@ -1,41 +1,36 @@
-﻿@model IEnumerable<GamingPlatform.Domain.DTO.GameDto>
+@using GamingPlatform.Web.Helpers
+@model IEnumerable<GamingPlatform.Domain.DTO.GameDto>
 
 @{
     ViewData["Title"] = "My Library";
+    const string controller = "Libraries";
 }
 
-<h2 class="mb-4">My Library</h2>
+<div class="page-header">
+    <h2>My Library <small class="text-muted fs-6">@Model.Count() @(Model.Count() == 1 ? "game" : "games")</small></h2>
+    <a asp-controller="Games" asp-action="Index" class="btn btn-outline-secondary btn-sm">Browse store</a>
+</div>
 
 @if (!Model.Any())
 {
-    <p>You haven’t purchased any games yet.</p>
+    <div class="empty-state">
+        <span class="icon">&#127922;</span>
+        You haven't added any games yet.
+        <div class="mt-3"><a asp-controller="Games" asp-action="Index" class="btn btn-primary btn-sm">Find a game</a></div>
+    </div>
 }
 else
 {
-    <div class="row row-cols-1 row-cols-md-3 g-4">
+    <div class="row g-4" id="game-grid">
         @foreach (var game in Model)
         {
-            <div class="col">
-                <div class="card h-100">
-                    <!-- Cover image -->
-                    <img src="@game.CoverImageUrl" class="card-img-top" alt="@game.Title" style="height:200px; object-fit:cover;">
-
-                    <div class="card-body">
-                        <h5 class="card-title">@game.Title</h5>
-                        <p class="card-text text-truncate">@game.Description</p>
-                        <p class="card-text"><small class="text-muted">@game.Genre | @game.Platform</small></p>
-                        <p class="card-text">
-                            <strong>Price:</strong> @(game.Price == 0 ? "Free to Play" : $"${game.Price}")
-                        </p>
-
-                        <!-- Details button -->
-                        <a asp-controller="Libraries"
-                           asp-action="Details"
-                           asp-route-id="@game.Id"
-                           class="btn btn-primary">View Details</a>
-                    </div>
-                </div>
+            <div class="col-6 col-md-4 col-lg-3"
+                 data-title="@(game.Title?.ToLowerInvariant())"
+                 data-meta="@(($"{game.Genre} {game.Platform}").ToLowerInvariant())"
+                 data-price="@((game.Price ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))">
+                <partial name="_GameCard" model="@GameCardModel.From(game, controller)" />
             </div>
         }
     </div>
+    <div id="no-results" class="empty-state d-none">No games match your search.</div>
 }

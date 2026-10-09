@@ -91,7 +91,6 @@ namespace GamingPlatform.Web.Areas.Identity.Pages.Account
             public string Username { get; set; }
             [Required]
             public DateTime DateOfBirth { get; set; }
-            public string ProfilePictureUrl { get; set; }
             public string Bio { get; set; }
 
             /// <summary>
@@ -131,16 +130,12 @@ namespace GamingPlatform.Web.Areas.Identity.Pages.Account
 
             var user = CreateUser();
 
-            await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+            await _userStore.SetUserNameAsync(user, Input.Username, CancellationToken.None);
             await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
 
             user.FirstName = Input.FirstName;
             user.LastName = Input.LastName;
-            user.DisplayUsername = Input.Username;
             user.DateOfBirth = Input.DateOfBirth;
-            user.FriendshipsSent = new List<Friend>();
-            user.FriendshipsReceived = new List<Friend>();
-            user.ProfilePictureUrl = Input.ProfilePictureUrl;
             user.Bio = Input.Bio;
 
             var result = await _userManager.CreateAsync(user, Input.Password);
@@ -150,6 +145,14 @@ namespace GamingPlatform.Web.Areas.Identity.Pages.Account
                 foreach (var error in result.Errors)
                     ModelState.AddModelError(string.Empty, error.Description);
 
+                return Page();
+            }
+            var roleResult = await _userManager.AddToRoleAsync(user, Roles.User);
+
+            if (!roleResult.Succeeded)
+            {
+                foreach (var error in roleResult.Errors)
+                    ModelState.AddModelError(string.Empty, error.Description);
                 return Page();
             }
 

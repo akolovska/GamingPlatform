@@ -1,104 +1,215 @@
-﻿@model GamingPlatform.Domain.DTO.GameDto
+@model GamingPlatform.Domain.DTO.GameDto
 
 @{
     ViewData["Title"] = Model.Title;
+    bool isLoggedIn = User.Identity?.IsAuthenticated == true;
+    bool isDelisted = ViewBag.IsDelisted == true;
+    var loginUrl = Url.Page("/Account/Login", new { area = "Identity", returnUrl = Context.Request.Path });
+    bool free = (Model.Price ?? 0) == 0;
+    int reviewCount = Model.Reviews?.Count ?? 0;
+    int achCount = Model.Achievements?.Count ?? 0;
+    int filled = (int)Math.Round(Model.Rating ?? 0);
 }
 
-<div class="container mt-4">
-    <div class="row">
-        <!-- Game cover -->
-        <div class="col-md-4">
-            <img src="@Model.CoverImageUrl" class="img-fluid rounded" alt="@Model.Title" />
+<nav aria-label="breadcrumb" class="mb-3 small">
+    <a asp-action="Index">Store</a>
+    @if (!string.IsNullOrWhiteSpace(Model.Genre))
+    {
+        <span class="text-muted"> / @Model.Genre</span>
+    }
+    <span class="text-muted"> / @Model.Title</span>
+</nav>
+
+@if (isDelisted)
+{
+    <div class="alert alert-warning">This game is no longer available in the store.</div>
+}
+
+<div class="row g-4 detail-wrap">
+    <!-- LEFT: cover + purchase -->
+    <div class="col-lg-5">
+        <div class="cover">
+            @if (!string.IsNullOrEmpty(Model.CoverImageUrl))
+            {
+                <img src="@Model.CoverImageUrl" class="detail-cover" alt="@Model.Title" />
+            }
+            else
+            {
+                <div class="cover-placeholder detail-cover" style="aspect-ratio:16/10">No cover image</div>
+            }
         </div>
 
-        <!-- Game info -->
-        <div class="col-md-8">
-            <h2>@Model.Title</h2>
-            <p class="text-muted">@Model.Genre | @Model.Platform</p>
-            <p>@Model.Description</p>
-
-            <h4 class="text-success">
-                @(Model.Price == 0 ? "Free to Play" : $"${Model.Price}")
-            </h4>
-
-            <!-- Buy/Add to Wishlist buttons -->
-            <div class="mb-3">
-                @if (Model.InLibrary)
+        <div class="buy-box mt-3">
+            <div>
+                <div class="price">@(free ? "Free to Play" : $"${Model.Price:0.00}")</div>
+                @if (Model.Rating != null)
                 {
-                    <button class="btn btn-secondary" disabled>Already Bought</button>
+                    <div class="small">
+                        <span class="stars">@(new string('★', filled))<span class="off">@(new string('★', 5 - filled))</span></span>
+                        <span class="text-muted ms-1">@Model.Rating.Value.ToString("0.0") (@reviewCount)</span>
+                    </div>
                 }
-                else
-                {
-                    <form asp-controller="Libraries" asp-action="BuyGame" method="post" class="d-inline">
-                        <input type="hidden" name="gameId" value="@Model.Id" />
-                        <button type="submit" class="btn btn-primary">Buy Now</button>
-                    </form>
-                }
-
-                @if (Model.InWishlist)
-                {
-                    <button class="btn btn-secondary" disabled>Already in Wishlist</button>
-                }
-                else
-                {
-                    <form asp-controller="Wishlists" asp-action="AddToWishlist" method="post" class="d-inline">
-                        <input type="hidden" name="gameId" value="@Model.Id" />
-                        <button type="submit" class="btn btn-outline-secondary">Add to Wishlist</button>
-                    </form>
-                }
-
             </div>
 
-
-            <!-- System requirements -->
-            @if (!string.IsNullOrEmpty(Model.SystemRequirements))
-            {
-                <h5>System Requirements</h5>
-                <p>@Model.SystemRequirements</p>
-            }
-
-            <!-- Developers -->
-            <h5>Developers</h5>
-            @if (Model.Developers != null && Model.Developers.Any())
-            {
-                <ul>
-                    @foreach (var dev in Model.Developers)
+            <div class="d-flex flex-wrap gap-2">
+                @if (!isLoggedIn)
+                {
+                    if (!isDelisted)
                     {
-                        <li>@dev</li>
+                        <a href="@loginUrl" class="btn btn-primary">Log in to buy</a>
                     }
-                </ul>
-            }
-            else
-            {
-                <p>No developers listed.</p>
-            }
+                }
+                else if (Model.InLibrary)
+                {
+                    <button class="btn btn-secondary" disabled>&#10003; In your library</button>
+                }
+                else if (!isDelisted)
+                {
+                    <form asp-controller="Libraries" asp-action="BuyGame" method="post"
+                          data-confirm="@(free ? $"Add {Model.Title} to your library?" : $"Buy {Model.Title} for ${Model.Price:0.00}?")">
+                        <input type="hidden" name="gameId" value="@Model.Id" />
+                        <button type="submit" class="btn btn-primary">@(free ? "Add to Library" : "Buy Now")</button>
+                    </form>
 
-            <!-- Achievements -->
-            <h5>Available Achievements</h5>
-            @if (Model.Achievements != null && Model.Achievements.Any())
-            {
-                <ul>
-                    @foreach (var achievement in Model.Achievements)
+                    @if (Model.InWishlist)
                     {
-                        <li>@achievement</li>
+                        <button class="btn btn-secondary" disabled>&#9829; On your wishlist</button>
                     }
-                </ul>
-            }
-            else
-            {
-                <p>No achievements available.</p>
-            }
+                    else
+                    {
+                        <form asp-controller="Wishlists" asp-action="AddToWishlist" method="post">
+                            <input type="hidden" name="gameId" value="@Model.Id" />
+                            <button type="submit" class="btn btn-outline-secondary">&#9825; Wishlist</button>
+                        </form>
+                    }
+                }
+            </div>
+        </div>
 
-            <!-- Ratings -->
-            <h5>Ratings</h5>
-            @if (Model.Rating != null)
+        @if (ViewBag.CanEdit == true)
+        {
+            <div class="panel mt-3 d-flex gap-2 align-items-center">
+                <span class="text-muted small me-auto">Manage this game</span>
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">Edit</a>
+                <form asp-action="SetListed" method="post"
+                      data-confirm="@(isDelisted ? "Relist this game in the store?" : "Remove this game from the store? Owners keep it.")">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <input type="hidden" name="listed" value="@(isDelisted ? "true" : "false")" />
+                    <button type="submit" class="btn btn-outline-danger btn-sm">@(isDelisted ? "Relist" : "Delist")</button>
+                </form>
+            </div>
+        }
+    </div>
+
+    <!-- RIGHT: info -->
+    <div class="col-lg-7">
+        <h1 class="fw-bold mb-2">@Model.Title</h1>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            @foreach (var g in (Model.Genre ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                <p>@Model.Rating / 5 ⭐</p>
+                <span class="badge-pill">@g</span>
             }
-            else
+            @if (!string.IsNullOrWhiteSpace(Model.Platform))
             {
-                <p>No ratings yet.</p>
+                <span class="badge-pill">@Model.Platform</span>
             }
+            @if (Model.ReleaseDate != null)
+            {
+                <span class="badge-pill">Released @Model.ReleaseDate.Value.ToString("MMM d, yyyy")</span>
+            }
+        </div>
+
+        <ul class="nav nav-pills nav-pills-dark mb-3" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-about" type="button">About</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-ach" type="button">Achievements <span class="badge-pill">@achCount</span></button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-rev" type="button">Reviews <span class="badge-pill">@reviewCount</span></button></li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-about">
+                <p style="white-space:pre-line">@(string.IsNullOrWhiteSpace(Model.Description) ? "No description yet." : Model.Description)</p>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <div class="panel h-100">
+                            <h6 class="text-uppercase small text-muted">Developers</h6>
+                            @if (Model.Developers != null && Model.Developers.Any())
+                            {
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var dev in Model.Developers)
+                                    {
+                                        <span class="badge-pill">@dev.Name</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No developers listed.</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="panel h-100">
+                            <h6 class="text-uppercase small text-muted">System requirements</h6>
+                            @if (!string.IsNullOrEmpty(Model.SystemRequirements))
+                            {
+                                <div class="small" style="white-space:pre-line">@Model.SystemRequirements</div>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Not specified.</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-ach">
+                @if (Model.Achievements != null && Model.Achievements.Any())
+                {
+                    foreach (var achievement in Model.Achievements)
+                    {
+                        <div class="achievement">
+                            <div class="ico">&#127942;</div>
+                            <div>
+                                <div class="fw-semibold text-white">@achievement.Name</div>
+                                @if (!string.IsNullOrEmpty(achievement.Description))
+                                {
+                                    <div class="small text-muted">@achievement.Description</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="empty-state">No achievements available.</div>
+                }
+            </div>
+
+            <div class="tab-pane fade" id="tab-rev">
+                @if (Model.Reviews != null && Model.Reviews.Any())
+                {
+                    foreach (var review in Model.Reviews.OrderByDescending(r => r.DateRated))
+                    {
+                        int s = (int)Math.Round((double)review.Score);
+                        <div class="review">
+                            <div class="d-flex justify-content-between">
+                                <span class="stars">@(new string('★', s))<span class="off">@(new string('★', Math.Max(0, 5 - s)))</span></span>
+                                <small class="text-muted">@review.DateRated?.ToString("MMM d, yyyy")</small>
+                            </div>
+                            @if (!string.IsNullOrEmpty(review.Comment))
+                            {
+                                <div class="mt-1">@review.Comment</div>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="empty-state">No reviews yet.</div>
+                }
+            </div>
         </div>
     </div>
 </div>

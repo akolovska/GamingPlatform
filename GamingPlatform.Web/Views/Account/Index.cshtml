@@ -1,127 +1,181 @@
-﻿@model GamingPlatform.Domain.Identity.GamingPlatformUser
+@using GamingPlatform.Web.Helpers
+@using GamingPlatform.Domain.DTO
+@model GamingPlatform.Domain.Identity.GamingPlatformUser
 @{
     ViewData["Title"] = "My Account";
-    var friends = ViewBag.Friends as List<GamingPlatform.Domain.Identity.GamingPlatformUser>;
-    var games = ViewBag.Games as List<GamingPlatform.Domain.Models.Game>;
+    var friends = ViewBag.Friends as List<GamingPlatform.Domain.Identity.GamingPlatformUser> ?? new();
+    var games = ViewBag.Games as List<GameDto> ?? new();
+    var pending = ViewBag.PendingRequests as List<PendingRequestDto> ?? new();
+    var blocked = ViewBag.BlockedUsers as List<GamingPlatform.Domain.Identity.GamingPlatformUser> ?? new();
+    var isVerified = ViewBag.IsVerified as bool? ?? false;
 }
 
-<h2>My Account</h2>
+<!-- Profile banner -->
+<section class="profile-banner mb-4">
+    <img src="@AvatarHelper.Resolve(Model.ProfilePictureUrl)" alt="Profile picture" class="avatar-lg" />
+    <div class="flex-grow-1">
+        <h2 class="mb-1">@Model.UserName</h2>
+        <div class="text-muted small mb-2">@Model.Email</div>
+        <p class="mb-3">@(string.IsNullOrWhiteSpace(Model.Bio) ? "No bio yet." : Model.Bio)</p>
+        <div class="d-flex flex-wrap gap-4 small">
+            <div><span class="fs-5 fw-bold text-white">@games.Count</span> <span class="text-muted">games</span></div>
+            <div><span class="fs-5 fw-bold text-white">@friends.Count</span> <span class="text-muted">friends</span></div>
+            <div><span class="fs-5 fw-bold text-white">@pending.Count</span> <span class="text-muted">requests</span></div>
+        </div>
+    </div>
+    <div class="d-flex flex-column gap-2">
+        <a asp-action="Edit" class="btn btn-primary btn-sm">Edit profile</a>
+        <a asp-controller="Wishlists" asp-action="Index" class="btn btn-outline-secondary btn-sm">My wishlist</a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#blockedModal">
+            Blocked users (@blocked.Count)
+        </button>
+    </div>
+</section>
 
-<div class="mb-4">
-    <h4>Profile</h4>
-    <p><strong>Username:</strong> @Model.UserName</p>
-    <p><strong>Email:</strong> @Model.Email</p>
-    <p><strong>Bio:</strong> @Model.Bio</p>
-    <img src="@Model.ProfilePictureUrl" alt="Profile Picture" width="100" class="rounded" />
-</div>
-<div class="mb-4 d-flex justify-content-between align-items-center">
-    <h4>Profile</h4>
-    <a asp-controller="Account" asp-action="Edit" class="btn btn-warning btn-sm">Edit Profile</a>
-</div>
-<div class="mb-4 d-flex justify-content-between align-items-center">
-    <h4>Wishlist</h4>
-    <a asp-controller="Wishlists" asp-action="Index" class="btn btn-warning btn-sm">My wishlist</a>
-</div>
-
-<div class="mb-4">
-    <h4>Search people</h4>
-    <form asp-controller="Account" asp-action="Details" method="get" class="d-flex gap-2">
-        <input type="text" name="requestId" class="form-control" placeholder="Friend's username" required />
-        <button type="submit" class="btn btn-primary">Search</button>
-    </form>
-    @if (TempData["Blocked"] != null)
-    {
-        <div class="mt-2 alert alert-info">@TempData["Blocked"]</div>
-    }
-</div>
-
-@if (TempData["Verified"] != null)
+@if (!isVerified)
 {
-    <div class="mt-2 text-success">@TempData["Verified"]</div>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <form asp-action="ResendConfirmationEmail" method="post" class="panel h-100">
+                <label class="form-label">Your email isn't verified yet</label>
+                <button type="submit" class="btn btn-primary">Resend confirmation email</button>
+            </form>
+        </div>
+    </div>
 }
 
-
-<div class="mb-4">
-    <h4>My Friends</h4>
-    @if (friends != null && friends.Any())
-    {
-        <ul class="list-group">
-            @foreach (var f in friends)
-            {
-                <li class="list-group-item">@f.UserName</li>
-            }
-        </ul>
-    }
-    else
-    {
-        <p>You have no friends yet.</p>
-    }
-</div>
-<div class="mb-4">
-    <h4>Pending Friend Requests</h4>
-    @if (ViewBag.PendingRequests != null && ViewBag.PendingRequests.Any())
-    {
-        <ul class="list-group">
-            @foreach (var req in ViewBag.PendingRequests)
-            {
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    @req.SenderUsername
-                    <form asp-controller="Friends" asp-action="AcceptFriend" method="post">
-                        <input type="hidden" name="requestId" value="@req.Id" />
-                        <button type="submit" class="btn btn-success btn-sm">Accept</button>
-                    </form>
-                    <form asp-controller="Friends" asp-action="DeclineFriend" method="post">
-                        <input type="hidden" name="requestId" value="@req.Id" />
-                        <button type="submit" class="btn btn-success btn-sm">Delete</button>
-                    </form>
-                </li>
-            }
-        </ul>
-    }
-    else
-    {
-        <p>No pending requests.</p>
-    }
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <form asp-action="Details" method="get" class="panel h-100">
+            <label class="form-label">Find a profile</label>
+            <div class="input-group">
+                <input type="text" name="requestId" class="form-control" placeholder="Username or email" required />
+                <button type="submit" class="btn btn-outline-secondary">View</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-6">
+        <form asp-controller="Friends" asp-action="AddFriend" method="post" class="panel h-100">
+            <label class="form-label">Add a friend</label>
+            <div class="input-group">
+                <input type="text" name="username" class="form-control" placeholder="Friend's username" required />
+                <button type="submit" class="btn btn-primary">Send request</button>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div class="mb-4">
-    <h4>Add a Friend</h4>
-    <form asp-controller="Friends" asp-action="AddFriend" method="post" class="d-flex gap-2">
-        <input type="text" name="requestId" class="form-control" placeholder="Friend's username" required />
-        <button type="submit" class="btn btn-primary">Send Friend Request</button>
-    </form>
-    @if (TempData["FriendMessage"] != null)
-    {
-        <div class="mt-2 text-success">@TempData["FriendMessage"]</div>
-    }
-</div>
+<ul class="nav nav-pills nav-pills-dark mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-games" type="button">Games <span class="badge-pill">@games.Count</span></button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-friends" type="button">Friends <span class="badge-pill">@friends.Count</span></button></li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-requests" type="button">
+            Requests @if (pending.Any()) { <span class="badge rounded-pill bg-danger">@pending.Count</span> }
+        </button>
+    </li>
+</ul>
 
-<div class="row g-4">
-    @if (games != null)
-    {
-        @foreach (var game in games)
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="tab-games">
+        @if (games.Any())
         {
-            <div class="col-md-3">
-                <div class="game-card">
-                    <img src="@game.CoverImageUrl" alt="@game.Title" />
-                    <div class="p-3">
-                        <h5>@game.Title</h5>
-                        <small>@game.Genre • @game.Platform</small>
-                        <p class="mt-2 price">
-                            @(game.Price == 0 ? "Free to Play" : $"${game.Price}")
-                        </p>
-                        <p class="mt-1 text-light small"><strong>System Requirements:</strong> @game.SystemRequirements</p>
-                        <a asp-controller="Games" asp-action="Details" asp-route-id="@game.Id" class="btn btn-sm btn-outline-light w-100">
-                            View Game
-                        </a>
+            <div class="row g-4">
+                @foreach (var game in games)
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <partial name="_GameCard" model="GameCardModel.From(game)" />
                     </div>
-                </div>
+                }
             </div>
         }
-    }
-    else
-    {
-        <p>No games.</p>
-    }
+        else
+        {
+            <div class="empty-state"><span class="icon">&#127922;</span>You don't own any games yet.</div>
+        }
+    </div>
+
+    <div class="tab-pane fade" id="tab-friends">
+        @if (friends.Any())
+        {
+            <div class="row g-3">
+                @foreach (var f in friends)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <a asp-action="Details" asp-route-requestId="@f.UserName" class="panel friend-row text-decoration-none d-flex">
+                            <img src="@AvatarHelper.Resolve(f.ProfilePictureUrl)" class="avatar-sm" style="width:44px;height:44px" alt="" />
+                            <span class="fw-semibold text-white">@f.UserName</span>
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state"><span class="icon">&#128101;</span>No friends yet. Send a request above!</div>
+        }
+    </div>
+
+    <div class="tab-pane fade" id="tab-requests">
+        @if (pending.Any())
+        {
+            <div class="list-group">
+                @foreach (var req in pending)
+                {
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold text-white">@req.SenderUsername <span class="text-muted fw-normal">wants to be your friend</span></span>
+                        <div class="d-flex gap-2">
+                            <form asp-controller="Friends" asp-action="AcceptFriend" method="post">
+                                <input type="hidden" name="requestId" value="@req.Id" />
+                                <button type="submit" class="btn btn-success btn-sm">Accept</button>
+                            </form>
+                            <form asp-controller="Friends" asp-action="DeclineFriend" method="post">
+                                <input type="hidden" name="requestId" value="@req.Id" />
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Decline</button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state"><span class="icon">&#128236;</span>No pending requests.</div>
+        }
+    </div>
 </div>
 
+<!-- Blocked users popup -->
+<div class="modal fade" id="blockedModal" tabindex="-1" aria-labelledby="blockedModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="blockedModalLabel">Blocked users</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                @if (blocked.Any())
+                {
+                    <div class="list-group">
+                        @foreach (var b in blocked)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span class="friend-row">
+                                    <img src="@AvatarHelper.Resolve(b.ProfilePictureUrl)" class="avatar-sm" alt="" />
+                                    @b.UserName
+                                </span>
+                                <form asp-controller="Friends" asp-action="UnblockUser" method="post">
+                                    <input type="hidden" name="requestId" value="@b.Id" />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Unblock</button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="mb-0 text-muted">You haven't blocked anyone.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
