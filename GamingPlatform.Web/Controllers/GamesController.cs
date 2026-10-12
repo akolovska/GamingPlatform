@@ -77,7 +77,7 @@ namespace GamingPlatform.Web.Controllers
                 Id = game.Id,
                 Title = game.Title,
                 Description = game.Description,
-                Genre = game.GenreNames,
+                GameGenres = game.GameGenres,
                 Platform = game.Platform,
                 Price = game.Price,
                 CoverImageUrl = game.CoverImageUrl,
@@ -174,6 +174,7 @@ namespace GamingPlatform.Web.Controllers
             if (!CanManage(game, user.Id)) return Forbid();
 
             LoadGenres();
+            LoadAchievements(game);
             return View(new GameFormDto
             {
                 Id = game.Id,
@@ -207,6 +208,7 @@ namespace GamingPlatform.Web.Controllers
             if (!ModelState.IsValid)
             {
                 LoadGenres();
+                LoadAchievements(game);
                 return View(form);
             }
 
@@ -276,6 +278,9 @@ namespace GamingPlatform.Web.Controllers
         }
 
         private void LoadGenres() => ViewBag.AllGenres = _genreService.GetAll();
+
+        private void LoadAchievements(Game game) =>
+            ViewBag.Achievements = game.Achievements?.ToList() ?? new List<Achievement>();
 
         // Drops forged ids, removes duplicates, requires at least one genre
         private void ValidateGenres(GameFormDto form)

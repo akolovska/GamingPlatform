@@ -14,9 +14,12 @@ namespace GamingPlatform.Repository.Data
     {
         public ApplicationDbContext CreateDbContext(string[] args)
         {
+            DotNetEnv.Env.Load();
+            DotNetEnv.Env.Load(); // reads .env from the working directory into environment variables
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
                 .AddJsonFile("appsettings.json")
+                .AddEnvironmentVariables()
                 .Build();
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
             optionsBuilder.UseSqlServer(

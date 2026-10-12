@@ -1,4 +1,5 @@
-﻿using GamingPlatform.Domain.Identity;
+﻿using GamingPlatform.Domain.DTO;
+using GamingPlatform.Domain.Identity;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
 using GamingPlatform.Service.Interfaces;
@@ -27,31 +28,33 @@ namespace GamingPlatform.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("GameId,Title,Description,Id")] Achievement achievement)
+        [Authorize(Roles = Roles.DevOrAdmin)]
+        public async Task<IActionResult> Create([Bind("GameId,Name,Description,Id")] AchievementDto achievement)
         {
             if (ModelState.IsValid)
             {
                 achievement.Id = Guid.NewGuid();
-                _achievementService.AddAchievement( achievement);
+                _achievementService.AddAchievement(AchievementDto.ToAchievement(achievement));
             }
-            return RedirectToAction("Details", "Games", new { id = achievement.GameId });
+            return RedirectToAction("Edit", "Games", new { id = achievement.GameId });
         }
 
         // GET: Achievements/Edit/5
         [Authorize(Roles = Roles.DevOrAdmin)]
-        public async Task<IActionResult> Edit(Guid? id)
+        public IActionResult Edit(Guid? id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var achievement = await _context.Achievements.FindAsync(id);
+            var achievement = _achievementService.GetAchievementById(id.Value);
             if (achievement == null)
             {
                 return NotFound();
             }
-            return View(achievement);
+            var dto = AchievementDto.FromAchievement(achievement);
+            return View(dto);
         }
 
         // POST: Achievements/Edit/5
@@ -59,9 +62,10 @@ namespace GamingPlatform.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("GameId,Title,Description,Id")] Achievement achievement)
+        [Authorize(Roles = Roles.DevOrAdmin)]
+        public async Task<IActionResult> Edit(Guid id, [Bind("GameId,Name,Description,Id")] AchievementDto dto)
         {
-            if (id != achievement.Id)
+            if (id != dto.Id)
             {
                 return NotFound();
             }
@@ -70,12 +74,11 @@ namespace GamingPlatform.Web.Controllers
             {
                 try
                 {
-                    _context.Update(achievement);
-                    await _context.SaveChangesAsync();
+                    _achievementService.UpdateAchievement(AchievementDto.ToAchievement(dto));
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!AchievementExists(achievement.Id))
+                    if (!AchievementExists(dto.Id))
                     {
                         return NotFound();
                     }
@@ -84,9 +87,8 @@ namespace GamingPlatform.Web.Controllers
                         throw;
                     }
                 }
-                return RedirectToAction(nameof(Index));
             }
-            return View(achievement);
+            return RedirectToAction("Edit", "Games", new { id = dto.GameId });
         }
 
         // GET: Achievements/Delete/5
@@ -98,8 +100,7 @@ namespace GamingPlatform.Web.Controllers
                 return NotFound();
             }
 
-            var achievement = await _context.Achievements
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var achievement = _achievementService.GetAchievementById(id.Value);
             if (achievement == null)
             {
                 return NotFound();
@@ -111,21 +112,22 @@ namespace GamingPlatform.Web.Controllers
         // POST: Achievements/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = Roles.DevOrAdmin)]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
-            var achievement = await _context.Achievements.FindAsync(id);
-            if (achievement != null)
+            var achievement = _achievementService.GetAchievementById(id);
+            if (achievement == null)
             {
-                _context.Achievements.Remove(achievement);
+                return NotFound();
             }
+            _achievementService.DeleteAchievement(id);
 
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction("Edit", "Games", new { id = achievement.GameId });
         }
 
         private bool AchievementExists(Guid id)
         {
-            return _context.Achievements.Any(e => e.Id == id);
+            return _achievementService.GetAchievementById(id) != null;
         }
     }
 }

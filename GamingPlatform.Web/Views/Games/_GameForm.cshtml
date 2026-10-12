@@ -91,6 +91,14 @@
                                     <div class="small text-muted">@achievement.Description</div>
                                 }
                             </div>
+                            @* Delete submits "delete-achievement-form" (in Edit.cshtml) to this achievement's URL. *@
+                            <div class="ms-auto d-flex gap-2">
+                                <a asp-controller="Achievements" asp-action="Edit" asp-route-id="@achievement.Id" class="btn btn-outline-secondary btn-sm">Edit</a>
+                                <button type="submit" form="delete-achievement-form"
+                                        formaction="@Url.Action("Delete", "Achievements", new { id = achievement.Id })"
+                                        class="btn btn-outline-danger btn-sm"
+                                        onclick="return confirm('Delete this achievement?');">Delete</button>
+                            </div>
                         </div>
                     }
                 }

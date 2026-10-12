@@ -4,8 +4,10 @@ namespace GamingPlatform.Service.Interfaces;
 
 public interface IAchievementService
 {
-    void AddAchievement(string gamerid, Achievement achievement);
+    void AddAchievement(Achievement achievement);
     Achievement GetAchievementById(Guid id);
     List<Achievement> getAllAchievements();
-    List<Achievement> getAllAchievementsBytGamer(string gamerid);
+    List<Achievement> getAllAchievementsByGamer(string gamerid);
+    void UpdateAchievement(Achievement achievement);
+    void DeleteAchievement(Guid id);
 }

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GamingPlatform.Repository.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260706185733_M11")]
-    partial class M11
+    [Migration("20261011102942_m15")]
+    partial class m15
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -42,10 +42,6 @@ namespace GamingPlatform.Repository.Migrations
 
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("DisplayUsername")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -96,6 +92,9 @@ namespace GamingPlatform.Repository.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<int>("WishlistVisibility")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedEmail")
@@ -140,7 +139,14 @@ namespace GamingPlatform.Repository.Migrations
                     b.Property<string>("StudioName")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("[UserId] IS NOT NULL");
 
                     b.ToTable("Devs");
                 });
@@ -169,7 +175,8 @@ namespace GamingPlatform.Repository.Migrations
 
                     b.HasIndex("FriendId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "FriendId")
+                        .IsUnique();
 
                     b.ToTable("Friends");
                 });
@@ -186,8 +193,8 @@ namespace GamingPlatform.Repository.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Genre")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<bool>("IsDelisted")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Platform")
                         .HasColumnType("nvarchar(max)");
@@ -231,6 +238,28 @@ namespace GamingPlatform.Repository.Migrations
                     b.ToTable("GameDevs");
                 });
 
+            modelBuilder.Entity("GamingPlatform.Domain.Models.GameGenre", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GenreId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GenreId");
+
+                    b.HasIndex("GameId", "GenreId")
+                        .IsUnique();
+
+                    b.ToTable("GameGenres");
+                });
+
             modelBuilder.Entity("GamingPlatform.Domain.Models.GamerAchievement", b =>
                 {
                     b.Property<Guid>("Id")
@@ -251,6 +280,24 @@ namespace GamingPlatform.Repository.Migrations
                     b.HasIndex("AchievementId");
 
                     b.ToTable("GamerAchievements");
+                });
+
+            modelBuilder.Entity("GamingPlatform.Domain.Models.Genre", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Genres");
                 });
 
             modelBuilder.Entity("GamingPlatform.Domain.Models.Library", b =>
@@ -468,18 +515,28 @@ namespace GamingPlatform.Repository.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("GamingPlatform.Domain.Models.Dev", b =>
+                {
+                    b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("GamingPlatform.Domain.Models.Friend", b =>
                 {
                     b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", "FriendUser")
                         .WithMany("FriendshipsReceived")
                         .HasForeignKey("FriendId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", "User")
                         .WithMany("FriendshipsSent")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("FriendUser");
@@ -500,6 +557,25 @@ namespace GamingPlatform.Repository.Migrations
                     b.Navigation("Developer");
 
                     b.Navigation("Game");
+                });
+
+            modelBuilder.Entity("GamingPlatform.Domain.Models.GameGenre", b =>
+                {
+                    b.HasOne("GamingPlatform.Domain.Models.Game", "Game")
+                        .WithMany("GameGenres")
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GamingPlatform.Domain.Models.Genre", "Genre")
+                        .WithMany("GameGenres")
+                        .HasForeignKey("GenreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Game");
+
+                    b.Navigation("Genre");
                 });
 
             modelBuilder.Entity("GamingPlatform.Domain.Models.GamerAchievement", b =>
@@ -608,11 +684,18 @@ namespace GamingPlatform.Repository.Migrations
 
                     b.Navigation("GameDevelopers");
 
+                    b.Navigation("GameGenres");
+
                     b.Navigation("Libraries");
 
                     b.Navigation("Reviews");
 
                     b.Navigation("Wishlists");
+                });
+
+            modelBuilder.Entity("GamingPlatform.Domain.Models.Genre", b =>
+                {
+                    b.Navigation("GameGenres");
                 });
 #pragma warning restore 612, 618
         }

@@ -16,9 +16,12 @@
 
 @* The achievement fields are shown inside the Achievements panel in _GameForm,
    but they submit with this form (a form can't be placed inside another form). *@
-<form id="add-achievement-form" asp-action="AddAchievement" method="post">
+<form id="add-achievement-form" asp-action="Create" asp-controller="Achievements" method="post">
     <input type="hidden" name="gameId" value="@Model.Id" />
 </form>
+
+@* Empty form used by the Delete buttons in _GameForm (each button sets its own formaction). *@
+<form id="delete-achievement-form" asp-controller="Achievements" asp-action="Delete" method="post"></form>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

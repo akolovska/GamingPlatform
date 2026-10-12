@@ -2,6 +2,7 @@
 using GamingPlatform.Repository.Interface;
 using GamingPlatform.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,6 +20,14 @@ namespace GamingPlatform.Service.Implementations
             _libraryRepository = libraryRepository;
             _gameService = gameService;
         }
+
+        // Everything the library pages show about a game
+        private static IIncludableQueryable<Library, object> IncludeGameDetails(IQueryable<Library> q) =>
+            q.Include(l => l.Game!).ThenInclude(g => g.GameGenres).ThenInclude(gg => gg.Genre)
+             .Include(l => l.Game!).ThenInclude(g => g.GameDevelopers).ThenInclude(gd => gd.Developer)
+             .Include(l => l.Game!).ThenInclude(g => g.Achievements)
+             .Include(l => l.Game!).ThenInclude(g => g.Reviews);
+
         public void AddGameToLibrary(string gamerid, Guid gameId)
         {
             _libraryRepository.Insert(new Library
@@ -50,9 +59,14 @@ namespace GamingPlatform.Service.Implementations
             return _libraryRepository.Get(selector: x => x, predicate: l => l.GamerId == gamerid);
         }
 
+        // Selects the Library row (not l.Game) so EF applies the includes; they're ignored when the projection changes type
         public List<Game> GetUserGames(string gamerid)
         {
-            return _libraryRepository.GetAll(selector: l => l.Game!, predicate: l => l.GamerId == gamerid).ToList();
+            return _libraryRepository.GetAll(
+                selector: l => l,
+                predicate: l => l.GamerId == gamerid,
+                include: IncludeGameDetails
+            ).Select(l => l.Game!).ToList();
         }
         public bool IsGameInLibrary(string userId, Guid gameId)
         {
@@ -63,10 +77,12 @@ namespace GamingPlatform.Service.Implementations
         }
         public Game GetGameFromLibrary(string userId, Guid gameId)
         {
-            return _libraryRepository.Get(
-                selector: l => l.Game!,
-                predicate: l => l.GamerId == userId && l.GameId == gameId
+            var entry = _libraryRepository.Get(
+                selector: l => l,
+                predicate: l => l.GamerId == userId && l.GameId == gameId,
+                include: IncludeGameDetails
             );
+            return entry?.Game;
         }
 
     }

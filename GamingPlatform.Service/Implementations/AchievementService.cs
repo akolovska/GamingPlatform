@@ -18,7 +18,27 @@ namespace GamingPlatform.Service.Implementations
             _gamerAchievementRepository = gamerAchievementRepository;
         }
 
-        public void AddAchievement(string gamerid, Achievement achievement)
+        public void AddAchievement(Achievement achievement)
+        {
+            if (achievement == null) return;
+            if (achievement.Id == default)
+            {
+                achievement.Id = Guid.NewGuid();
+            }
+            _achievementRepository.Insert(achievement);
+        }
+
+        public void DeleteAchievement(Guid id)
+        {
+            if (id == null) return;
+            var achievement = _achievementRepository.Get(x => x, predicate: x => x.Id == id);
+            if (achievement != null)
+            {
+                _achievementRepository.Delete(achievement);
+            }
+        }
+
+        public void UpdateAchievement(Achievement achievement)
         {
             if (achievement == null) return;
             if (achievement.Id == default)
@@ -26,16 +46,8 @@ namespace GamingPlatform.Service.Implementations
                 achievement.Id = Guid.NewGuid();
                 _achievementRepository.Insert(achievement);
             }
-
-            var ga = new GamerAchievement
-            {
-                Id = Guid.NewGuid(),
-                GamerId = gamerid,
-                AchievementId = achievement.Id,
-                DateUnlocked = DateTime.UtcNow
-            };
-
-            _gamerAchievementRepository.Insert(ga);
+            else
+                _achievementRepository.Update(achievement);
         }
 
         public Achievement GetAchievementById(Guid id) => _achievementRepository.Get(x => x, predicate: x => x.Id == id);
@@ -45,7 +57,7 @@ namespace GamingPlatform.Service.Implementations
             return _achievementRepository.GetAll(x => x).ToList();
         }
 
-        public List<Achievement> getAllAchievementsBytGamer(string gamerid)
+        public List<Achievement> getAllAchievementsByGamer(string gamerid)
         {
             var gaIds = _gamerAchievementRepository.GetAll(x => x, predicate: x => x.GamerId == gamerid)
                 .Select(x => x.AchievementId)

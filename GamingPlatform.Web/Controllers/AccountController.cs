@@ -255,7 +255,7 @@ namespace GamingPlatform.Web.Controllers
                 Id = g.Id,
                 Title = g.Title ?? "Unknown",
                 Description = g.Description,
-                Genre = g.GenreNames,
+                GameGenres = g.GameGenres,
                 Platform = g.Platform,
                 Price = g.Price,
                 CoverImageUrl = g.CoverImageUrl,

@@ -9,7 +9,7 @@ namespace GamingPlatform.Web.Helpers
         public Guid Id { get; init; }
         public string Title { get; init; } = "";
         public string? Cover { get; init; }
-        public string? Genre { get; init; }
+        public ICollection<GameGenre> GameGenres { get; set; } = new List<GameGenre>();
         public string? Platform { get; init; }
         public decimal? Price { get; init; }
         public DateTime? ReleaseDate { get; init; }
@@ -19,13 +19,13 @@ namespace GamingPlatform.Web.Helpers
 
         public static GameCardModel From(Game g) => new()
         {
-            Id = g.Id, Title = g.Title ?? "", Cover = g.CoverImageUrl, Genre = g.GenreNames,
+            Id = g.Id, Title = g.Title ?? "", Cover = g.CoverImageUrl, GameGenres = g.GameGenres,
             Platform = g.Platform, Price = g.Price, ReleaseDate = g.ReleaseDate
         };
 
         public static GameCardModel From(GameDto g, string controller = "Games", bool owned = false) => new()
         {
-            Id = g.Id, Title = g.Title ?? "", Cover = g.CoverImageUrl, Genre = g.Genre,
+            Id = g.Id, Title = g.Title ?? "", Cover = g.CoverImageUrl, GameGenres = g.GameGenres,
             Platform = g.Platform, Price = g.Price, ReleaseDate = g.ReleaseDate,
             Controller = controller, Owned = owned
         };

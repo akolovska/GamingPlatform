@@ -1,4 +1,5 @@
-﻿using System;
+﻿using GamingPlatform.Domain.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,7 +12,7 @@ namespace GamingPlatform.Domain.DTO
         public Guid Id { get; set; }
         public string? Title { get; set; }
         public string? Description { get; set; }
-        public string? Genre { get; set; }
+        public ICollection<GameGenre> GameGenres { get; set; } = new List<GameGenre>();
         public DateTime? ReleaseDate { get; set; }
         public decimal? Price { get; set; }
         public string? Platform { get; set; }

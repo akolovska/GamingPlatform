@@ -1,6 +1,7 @@
 @model GamingPlatform.Web.Helpers.GameCardModel
 @{
-    var meta = string.Join(" • ", new[] { Model.Genre, Model.Platform }.Where(s => !string.IsNullOrWhiteSpace(s)));
+    var genres = string.Join(", ", Model.GameGenres.Where(x => x.Genre != null).Select(x => x.Genre!.Name).OrderBy(n => n));
+    var meta = string.Join(" • ", new[] { genres, Model.Platform }.Where(s => !string.IsNullOrWhiteSpace(s)));
     bool free = (Model.Price ?? 0) == 0;
 }
 <div class="game-card">

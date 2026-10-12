@@ -75,6 +75,14 @@ else
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
+// One fixed culture ('.' decimals) so server formatting/model binding match jQuery Validation.
+// Only en-US is supported, so the browser's Accept-Language can't switch it.
+var appCulture = new[] { "en-US" };
+app.UseRequestLocalization(new RequestLocalizationOptions()
+    .SetDefaultCulture(appCulture[0])
+    .AddSupportedCultures(appCulture)
+    .AddSupportedUICultures(appCulture));
+
 app.UseRouting();
 
 app.UseAuthentication();

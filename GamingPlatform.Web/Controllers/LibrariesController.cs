@@ -52,7 +52,7 @@ namespace GamingPlatform.Web.Controllers
                 Id = g.Id,
                 Title = g.Title ?? "Unknown",
                 Description = g.Description,
-                Genre = g.GenreNames,
+                GameGenres = g.GameGenres,
                 Platform = g.Platform,
                 Price = g.Price,
                 CoverImageUrl = g.CoverImageUrl,
@@ -96,7 +96,7 @@ namespace GamingPlatform.Web.Controllers
                 Id = libraryEntry.Id,
                 Title = libraryEntry.Title ?? "Unknown",
                 Description = libraryEntry.Description,
-                Genre = libraryEntry.GenreNames,
+                GameGenres = libraryEntry.GameGenres,
                 Platform = libraryEntry.Platform,
                 Price = libraryEntry.Price,
                 CoverImageUrl = libraryEntry.CoverImageUrl,
@@ -135,7 +135,7 @@ namespace GamingPlatform.Web.Controllers
             if (!await _userManager.IsEmailConfirmedAsync(user))
             {
                 TempData["Verified"] = "Please verify your email to access all features.";
-                return RedirectToAction("Details", "Games");
+                return RedirectToAction("Details", "Games", new { id = gameId });
             }
 
             var game = _gameService.GetGameById(gameId);

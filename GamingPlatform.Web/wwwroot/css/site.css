@@ -22,7 +22,10 @@ html { font-size: 14px; position: relative; min-height: 100%; scroll-behavior: s
 @media (min-width: 768px) { html { font-size: 16px; } }
 
 body {
-  margin-bottom: 60px;
+  /* Sticky footer: footer sits after the content, or at the bottom of the screen on short pages */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: radial-gradient(1200px 600px at 10% -10%, #1d2b3d 0%, transparent 60%), var(--bg-body);
   background-attachment: fixed;
   color: var(--text-main);
@@ -53,7 +56,7 @@ hr { border-color: var(--border-color); opacity: 1; }
 
 /* ---------- Layout ---------- */
 main { padding-top: 1.75rem; }
-.footer { background: transparent; border-top: 1px solid var(--border-color) !important; padding: 1rem 0; position: absolute; bottom: 0; width: 100%; line-height: 28px; }
+.footer { background: transparent; border-top: 1px solid var(--border-color) !important; padding: 1rem 0; margin-top: auto; width: 100%; line-height: 28px; }
 .page-header { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .page-header h1, .page-header h2 { margin: 0; font-weight: 700; }
 .section-title { font-size: 1.15rem; font-weight: 700; margin: 2rem 0 1rem; display: flex; align-items: center; gap: .5rem; }
@@ -198,6 +201,7 @@ main { padding-top: 1.75rem; }
 .alert-info { background: #17303f; color: #8fd3f8; border-color: #25506a; }
 .alert-warning { background: #3a3117; color: #f0d27a; border-color: #5e5025; }
 .alert-danger { background: #3b1c1c; color: #ffa8a0; border-color: #6a2b2b; }
+.validation-summary-valid { display: none; }
 .page-link { background-color: var(--bg-surface); border-color: var(--border-color); color: var(--accent); }
 .page-item.active .page-link { background-color: var(--accent); border-color: var(--accent); color: #000; }
 .toast-stack { position: fixed; right: 1rem; bottom: 1rem; z-index: 2000; display: flex; flex-direction: column; gap: .5rem; }

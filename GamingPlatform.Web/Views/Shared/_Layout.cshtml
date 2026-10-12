@@ -106,7 +106,7 @@
         {
             if (TempData[key] is string msg && !string.IsNullOrWhiteSpace(msg))
             {
-                <span hidden data-toast="@msg" data-kind="@(key is "AvatarError" or "Error" ? "warning" : "success")"></span>
+                <span hidden data-toast="@msg" data-kind="@(key is "Verified" or "AvatarError" or "Error" ? "warning" : "success")"></span>
             }
         }
     </div>

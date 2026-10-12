@@ -43,7 +43,7 @@ namespace GamingPlatform.Web.Controllers
             if (!await _userManager.IsEmailConfirmedAsync(user))
             {
                 TempData["Verified"] = "Please verify your email to access all features.";
-                return RedirectToAction("Details", "Games");
+                return RedirectToAction("Details", "Games", new { id = gameId });
             }
 
             // Add the game to the user's wishlist
@@ -64,7 +64,7 @@ namespace GamingPlatform.Web.Controllers
                 Id = g.Id,
                 Title = g.Title,
                 Description = g.Description,
-                Genre = g.GenreNames,
+                GameGenres = g.GameGenres,
                 Platform = g.Platform,
                 Price = g.Price,
                 CoverImageUrl = g.CoverImageUrl,
@@ -108,7 +108,7 @@ namespace GamingPlatform.Web.Controllers
                 Id = g.Id,
                 Title = g.Title,
                 Description = g.Description,
-                Genre = g.GenreNames,
+                GameGenres = g.GameGenres,
                 Platform = g.Platform,
                 Price = g.Price,
                 CoverImageUrl = g.CoverImageUrl,

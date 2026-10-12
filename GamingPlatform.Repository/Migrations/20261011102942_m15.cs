@@ -5,7 +5,7 @@
 namespace GamingPlatform.Repository.Migrations
 {
     /// <inheritdoc />
-    public partial class m10 : Migration
+    public partial class m15 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
