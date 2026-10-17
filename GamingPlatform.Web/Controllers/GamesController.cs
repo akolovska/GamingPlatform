@@ -12,12 +12,15 @@ namespace GamingPlatform.Web.Controllers
 {
     public class GamesController : Controller
     {
+        private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
+        private const long MaxBytes = 2 * 1024 * 1024; // 2 MB
         private readonly IGameService _gameService;
         private readonly ILibraryService _libraryService;
         private readonly IWishlistService _wishlistService;
         private readonly IDevService _devService;
         private readonly IGenreService _genreService;
         private readonly UserManager<GamingPlatformUser> _userManager;
+        private readonly IWebHostEnvironment _env;
 
         public GamesController(
             IGameService gameService,
@@ -25,7 +28,8 @@ namespace GamingPlatform.Web.Controllers
             IWishlistService wishlistService,
             IDevService devService,
             IGenreService genreService,
-            UserManager<GamingPlatformUser> userManager)
+            UserManager<GamingPlatformUser> userManager,
+            IWebHostEnvironment env)
         {
             _gameService = gameService;
             _libraryService = libraryService;
@@ -33,6 +37,7 @@ namespace GamingPlatform.Web.Controllers
             _devService = devService;
             _genreService = genreService;
             _userManager = userManager;
+            _env = env;
         }
 
         // ---------- Public browsing ----------
@@ -72,6 +77,13 @@ namespace GamingPlatform.Web.Controllers
             bool canManage = userId != null && CanManage(game, userId);
             if (game.IsDelisted && !isOwner && !canManage) return NotFound();
 
+            // One query for all review authors; missing ids are deleted accounts
+            var authorIds = game.Reviews?.Where(r => r.GamerId != null).Select(r => r.GamerId!).Distinct().ToList()
+                            ?? new List<string>();
+            var authorNames = _userManager.Users
+                .Where(u => authorIds.Contains(u.Id))
+                .ToDictionary(u => u.Id, u => u.UserName ?? "Unknown");
+
             var gameDto = new GameDto
             {
                 Id = game.Id,
@@ -92,7 +104,15 @@ namespace GamingPlatform.Web.Controllers
                     .Select(a => new AchievementDto { Id = a.Id, Name = a.Name, Description = a.Description })
                     .ToList() ?? new List<AchievementDto>(),
                 Reviews = game.Reviews?
-                    .Select(r => new ReviewDto { Comment = r.Comment, Score = r.Score, DateRated = r.DateRated })
+                    .Select(r => new ReviewDto
+                    {
+                        Id = r.Id,
+                        Comment = r.Comment,
+                        Score = r.Score,
+                        DateRated = r.DateRated,
+                        IsMine = userId != null && r.GamerId == userId,
+                        GamerName = authorNames.GetValueOrDefault(r.GamerId ?? "", "Deleted user")
+                    })
                     .ToList() ?? new List<ReviewDto>(),
                 Rating = game.Reviews?.Any() == true ? game.Reviews.Average(r => r.Score) : null,
                 InWishlist = userId != null && _wishlistService.IsGameInWishlist(userId, gameId),
@@ -101,6 +121,8 @@ namespace GamingPlatform.Web.Controllers
 
             ViewBag.IsDelisted = game.IsDelisted;
             ViewBag.CanEdit = canManage;
+            // Owners can write one review; after that they edit it instead
+            ViewBag.CanReview = isOwner && game.Reviews?.Any(r => r.GamerId == userId) != true;
 
             return View(gameDto);
         }
@@ -134,12 +156,20 @@ namespace GamingPlatform.Web.Controllers
 
             ValidateGenres(form);
 
+            if (form.CoverFile == null || form.CoverFile.Length == 0)
+                ModelState.AddModelError(nameof(form.CoverFile), "Please choose a cover image.");
+            else
+                ValidateCover(form.CoverFile);
+
             if (!ModelState.IsValid)
             {
                 LoadStudiosForAdmin();
                 LoadGenres();
                 return View(form);
             }
+
+            // Only save the file once everything else is valid
+            form.CoverImageUrl = await SaveCoverAsync(form.CoverFile!);
 
             var game = new Game
             {
@@ -205,11 +235,24 @@ namespace GamingPlatform.Web.Controllers
 
             ValidateGenres(form);
 
+            // A new cover is optional on Edit; no file means keep the current one
+            bool hasNewCover = form.CoverFile != null && form.CoverFile.Length > 0;
+            if (hasNewCover)
+                ValidateCover(form.CoverFile!);
+
             if (!ModelState.IsValid)
             {
+                form.CoverImageUrl = game.CoverImageUrl; // re-show the real cover, not the posted hidden value
                 LoadGenres();
                 LoadAchievements(game);
                 return View(form);
+            }
+
+            if (hasNewCover)
+            {
+                var oldCover = game.CoverImageUrl;
+                game.CoverImageUrl = await SaveCoverAsync(form.CoverFile!);
+                DeleteCoverFile(oldCover);
             }
 
             game.Title = form.Title;
@@ -217,7 +260,6 @@ namespace GamingPlatform.Web.Controllers
             game.ReleaseDate = form.ReleaseDate;
             game.Price = form.Price;
             game.Platform = form.Platform;
-            game.CoverImageUrl = form.CoverImageUrl;
             game.SystemRequirements = form.SystemRequirements;
 
             // Replace the genre links
@@ -290,6 +332,39 @@ namespace GamingPlatform.Web.Controllers
 
             if (!form.GenreIds.Any())
                 ModelState.AddModelError(nameof(form.GenreIds), "Choose at least one genre.");
+        }
+
+        private void ValidateCover(IFormFile file)
+        {
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!AllowedExtensions.Contains(ext) || file.Length > MaxBytes)
+                ModelState.AddModelError(nameof(GameFormDto.CoverFile), "Use a JPG, PNG or WebP under 2 MB.");
+        }
+
+        // Saves to wwwroot/uploads/covers and returns the public URL
+        private async Task<string> SaveCoverAsync(IFormFile file)
+        {
+            var folder = Path.Combine(_env.WebRootPath, "uploads", "covers");
+            Directory.CreateDirectory(folder);
+
+            // Never trust the client's filename; generate our own
+            var fileName = $"{Guid.NewGuid():N}{Path.GetExtension(file.FileName).ToLowerInvariant()}";
+            await using (var stream = System.IO.File.Create(Path.Combine(folder, fileName)))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return $"/uploads/covers/{fileName}";
+        }
+
+        private void DeleteCoverFile(string? url)
+        {
+            // Only ever delete files inside our own covers folder (old covers may be external URLs)
+            if (string.IsNullOrEmpty(url) || !url.StartsWith("/uploads/covers/")) return;
+
+            var path = Path.Combine(_env.WebRootPath, url.TrimStart('/'));
+            if (System.IO.File.Exists(path))
+                System.IO.File.Delete(path);
         }
     }
 }

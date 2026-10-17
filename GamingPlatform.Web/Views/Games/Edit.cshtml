@@ -10,7 +10,7 @@
     <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">&larr; Back to game</a>
 </div>
 
-<form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
     <partial name="_GameForm" model="Model" view-data="ViewData" />
 </form>
 
@@ -22,6 +22,14 @@
 
 @* Empty form used by the Delete buttons in _GameForm (each button sets its own formaction). *@
 <form id="delete-achievement-form" asp-controller="Achievements" asp-action="Delete" method="post"></form>
+
+@* One form per achievement; the Name/Description inputs in _GameForm point at it with form="edit-achievement-{id}". *@
+@foreach (var a in ViewBag.Achievements as List<GamingPlatform.Domain.Models.Achievement> ?? new())
+{
+    <form id="edit-achievement-@a.Id" asp-controller="Achievements" asp-action="Edit" asp-route-id="@a.Id" method="post">
+        
+    </form>
+}
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

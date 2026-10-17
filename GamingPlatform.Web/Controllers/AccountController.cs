@@ -210,7 +210,7 @@ namespace GamingPlatform.Web.Controllers
             if (loggedInUser == null) return NotFound();
 
             var user = _userManager.Users
-                .FirstOrDefault(u => u.UserName == requestId || u.Email == requestId);
+                .FirstOrDefault(u => u.UserName == requestId);
             if (user == null) return NotFound();
 
             // Viewing yourself -> go to your own profile page

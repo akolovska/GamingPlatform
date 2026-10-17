@@ -54,6 +54,29 @@ namespace GamingPlatform.Repository.Data
                 e.HasIndex(f => new { f.UserId, f.FriendId }).IsUnique();
             });
 
+            // One row per player per game. Deleting an account removes that player's
+            // library and wishlist, but keeps their reviews with no author.
+            modelBuilder.Entity<Library>(e =>
+            {
+                e.HasOne<GamingPlatformUser>().WithMany()
+                 .HasForeignKey(l => l.GamerId).OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(l => new { l.GamerId, l.GameId }).IsUnique();
+            });
+
+            modelBuilder.Entity<Wishlist>(e =>
+            {
+                e.HasOne<GamingPlatformUser>().WithMany()
+                 .HasForeignKey(w => w.GamerId).OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(w => new { w.GamerId, w.GameId }).IsUnique();
+            });
+
+            modelBuilder.Entity<Review>(e =>
+            {
+                e.HasOne<GamingPlatformUser>().WithMany()
+                 .HasForeignKey(r => r.GamerId).OnDelete(DeleteBehavior.SetNull);
+                e.HasIndex(r => new { r.GamerId, r.GameId }).IsUnique();
+            });
+
             modelBuilder.Entity<Game>()
                 .Property(g => g.Price)
                 .HasPrecision(18, 2);

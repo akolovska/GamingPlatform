@@ -1,158 +1,108 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
+﻿using GamingPlatform.Domain.DTO;
+using GamingPlatform.Domain.Identity;
 using GamingPlatform.Domain.Models;
-using GamingPlatform.Repository.Data;
+using GamingPlatform.Service.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace GamingPlatform.Web.Controllers
 {
+    [Authorize]
     public class ReviewsController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IReviewService _reviewService;
+        private readonly IGameService _gameService;
+        private readonly ILibraryService _libraryService;
 
-        public ReviewsController(ApplicationDbContext context)
+        public ReviewsController(IReviewService reviewService, IGameService gameService, ILibraryService libraryService)
         {
-            _context = context;
+            _reviewService = reviewService;
+            _gameService = gameService;
+            _libraryService = libraryService;
         }
 
-        // GET: Reviews
-        public async Task<IActionResult> Index()
-        {
-            return View(await _context.Reviews.ToListAsync());
-        }
-
-        // GET: Reviews/Details/5
-        public async Task<IActionResult> Details(Guid? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var review = await _context.Reviews
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (review == null)
-            {
-                return NotFound();
-            }
-
-            return View(review);
-        }
-
-        // GET: Reviews/Create
-        public IActionResult Create()
-        {
-            return View();
-        }
-
-        // POST: Reviews/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        // Only players who own the game, one review per game
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("GamerId,GameId,Score,Comment,DateRated,Id")] Review review)
+        public IActionResult Create(Guid gameId, ReviewFormDto dto)
         {
-            if (ModelState.IsValid)
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+            if (_gameService.GetGameById(gameId) == null) return NotFound();
+            if (!_libraryService.IsGameInLibrary(userId, gameId)) return Forbid();
+
+            if (_reviewService.GetUserReviewForGame(userId, gameId) != null)
             {
-                review.Id = Guid.NewGuid();
-                _context.Add(review);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                TempData["Error"] = "You have already reviewed this game.";
+                return RedirectToGame(gameId);
             }
-            return View(review);
+
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Please give a score from 1 to 5 and a comment.";
+                return RedirectToGame(gameId);
+            }
+
+            _reviewService.AddReview(userId, gameId, dto);
+            TempData["Success"] = "Review posted.";
+            return RedirectToGame(gameId);
         }
 
-        // GET: Reviews/Edit/5
-        public async Task<IActionResult> Edit(Guid? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var review = await _context.Reviews.FindAsync(id);
-            if (review == null)
-            {
-                return NotFound();
-            }
-            return View(review);
-        }
-
-        // POST: Reviews/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        // Author, or Admin/Dev who manages the game
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("GamerId,GameId,Score,Comment,DateRated,Id")] Review review)
+        public IActionResult Edit(Guid id, ReviewFormDto dto)
         {
-            if (id != review.Id)
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+            var review = _reviewService.GetReviewById(id);
+            if (review?.GameId == null) return NotFound();
+
+            var game = _gameService.GetGameById(review.GameId.Value);
+            if (game == null) return NotFound();
+            if (review.GamerId != userId && !CanModerate(game, userId)) return Forbid();
+
+            if (!ModelState.IsValid)
             {
-                return NotFound();
+                TempData["Error"] = "Please give a score from 1 to 5 and a comment.";
+                return RedirectToGame(game.Id);
             }
 
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(review);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ReviewExists(review.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            return View(review);
+            _reviewService.UpdateReview(review, dto);
+            TempData["Success"] = "Review updated.";
+            return RedirectToGame(game.Id);
         }
 
-        // GET: Reviews/Delete/5
-        public async Task<IActionResult> Delete(Guid? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var review = await _context.Reviews
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (review == null)
-            {
-                return NotFound();
-            }
-
-            return View(review);
-        }
-
-        // POST: Reviews/Delete/5
-        [HttpPost, ActionName("Delete")]
+        // Admin, or Dev who manages the game
+        [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(Guid id)
+        public IActionResult Delete(Guid id)
         {
-            var review = await _context.Reviews.FindAsync(id);
-            if (review != null)
-            {
-                _context.Reviews.Remove(review);
-            }
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            var review = _reviewService.GetReviewById(id);
+            if (review?.GameId == null) return NotFound();
+
+            var game = _gameService.GetGameById(review.GameId.Value);
+            if (game == null) return NotFound();
+            if (!CanModerate(game, userId)) return Forbid();
+
+            _reviewService.DeleteReview(review);
+            TempData["Success"] = "Review deleted.";
+            return RedirectToGame(game.Id);
         }
 
-        private bool ReviewExists(Guid id)
+        // Same rule as GamesController.CanManage: Admin any game, Dev only their studio's games
+        private bool CanModerate(Game game, string userId)
         {
-            return _context.Reviews.Any(e => e.Id == id);
+            if (User.IsInRole(Roles.Admin)) return true;
+            if (!User.IsInRole(Roles.Dev)) return false;
+
+            return game.GameDevelopers?.Any(gd => gd.Developer?.UserId == userId) == true;
         }
+
+        private IActionResult RedirectToGame(Guid gameId) =>
+            RedirectToAction("Details", "Games", new { id = gameId });
     }
 }

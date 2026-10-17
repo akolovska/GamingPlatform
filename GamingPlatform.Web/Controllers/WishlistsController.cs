@@ -53,6 +53,21 @@ namespace GamingPlatform.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult RemoveFromWishlist(Guid gameId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+            if (_wishlistService.IsGameInWishlist(userId, gameId))
+            {
+                _wishlistService.DeleteGameFromWishlist(userId, gameId);
+                TempData["Success"] = "Removed from your wishlist.";
+            }
+
+            return RedirectToAction("Details", "Games", new { id = gameId });
+        }
+
         // GET: Wishlists
         [Authorize]
         public IActionResult Index()

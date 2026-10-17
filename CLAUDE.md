@@ -1,20 +1,5 @@
 # CLAUDE.md
 
-## How we work together
-
-I'm learning by building this project. **I write the code; Claude helps.**
-
-- **Don't edit, create, or delete source files** (`.cs`, `.cshtml`, `.css`, `.js`, `.json`, migrations) unless I explicitly ask for that specific change.
-- **Never run `git commit`, `git push`, or EF migration commands that change the database** (`dotnet ef migrations add`, `dotnet ef database update`). Tell me the command and I'll run it.
-- Read-only actions are always fine: reading files, searching, `git status`/`git diff`/`git log`, `dotnet build`.
-- **Learning mode:** don't put `TODO(human)` markers in the code. Describe each "Learn by Doing" task in chat instead, naming the file and the method/class.
-- **How to help:**
-  - Explain the *why*, and point to exact locations as `file:line`.
-  - Start with hints and the approach. Show a small snippet (under ~10 lines) only when the concept needs it. Give the full solution only if I ask for it.
-  - When I'm stuck, ask a guiding question before giving the answer.
-  - When I say I've written something, review it: bugs first, then security, then design and style. Explain each point.
-  - Break bigger fixes into small steps I can do one at a time, and check each step before moving on.
-
 ## Project overview
 
 ASP.NET Core 8 MVC gaming store (games, libraries, wishlists, friends, achievements, reviews, dev studios). SQL Server via EF Core, ASP.NET Identity with roles, Stripe Checkout for purchases.
@@ -49,8 +34,8 @@ dotnet ef database update --project GamingPlatform.Repository --startup-project 
 
 ## Known issues backlog (from the architecture review, 2026-10-08)
 
-1. Leaked secrets in git history (Stripe key, Gmail app password, DB password). Rotate them and move them to user-secrets.
-2. `LibrariesController.PaymentSuccess` grants games without verifying the Stripe session.
+1. ~~Leaked secrets in git history (Stripe key, Gmail app password, DB password).~~ **Resolved 2026-10-16:** Stripe keys and Gmail app password rotated; the hosted DB (SmarterASP.net account `akolovska-001`) has expired. Secrets now live in `GamingPlatform.Web/.env` (git-ignored, loaded by `DotNetEnv`). The old values are still in git history but no longer work.
+2. ~~`LibrariesController.PaymentSuccess` grants games without verifying the Stripe session.~~ **Resolved 2026-10-16:** `PaymentSuccess` fetches the session by `session_id` and grants only when `PaymentStatus == "paid"`; game and user come from the session `Metadata`; adding to the library is safe to repeat. Free games skip Stripe. Possible follow-up: a `checkout.session.completed` webhook, for buyers who close the tab before returning to the site.
 3. Scaffolded controllers have no `[Authorize]`, and `AdminController`'s is commented out.
 4. `IRepository.GetAll` returns `IEnumerable`, so services filter whole tables in memory.
 5. No unit of work: every repository call runs `SaveChanges`.

@@ -32,7 +32,10 @@
         }
         else if (requestSent)
         {
-            <button class="btn btn-secondary btn-sm w-100" disabled>Request sent</button>
+            <form asp-controller="Friends" asp-action="CancelRequest" method="post" data-confirm="Cancel your friend request to @Model.UserName?">
+                <input type="hidden" name="requestId" value="@Model.Id" />
+                <button type="submit" class="btn btn-outline-secondary btn-sm w-100">Cancel request</button>
+            </form>
         }
         else if (incomingId.HasValue)
         {

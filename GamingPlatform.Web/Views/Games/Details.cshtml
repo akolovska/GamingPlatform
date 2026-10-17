@@ -10,6 +10,8 @@
     int achCount = Model.Achievements?.Count ?? 0;
     int filled = (int)Math.Round(Model.Rating ?? 0);
     var genreNames = Model.GameGenres.Where(x => x.Genre != null).Select(x => x.Genre!.Name).OrderBy(n => n).ToList();
+    bool canManageGame = ViewBag.CanEdit == true;
+    bool canReview = ViewBag.CanReview == true;
 }
 
 <nav aria-label="breadcrumb" class="mb-3 small">
@@ -74,7 +76,10 @@
 
                     @if (Model.InWishlist)
                     {
-                        <button class="btn btn-secondary" disabled>&#9829; On your wishlist</button>
+                        <form asp-controller="Wishlists" asp-action="RemoveFromWishlist" method="post">
+                            <input type="hidden" name="gameId" value="@Model.Id" />
+                            <button type="submit" class="btn btn-outline-secondary">&#9829; Remove from wishlist</button>
+                        </form>
                     }
                     else
                     {
@@ -189,19 +194,83 @@
             </div>
 
             <div class="tab-pane fade" id="tab-rev">
+                @if (canReview)
+                {
+                    <button type="button" class="btn btn-outline-secondary btn-sm mb-3" data-bs-toggle="collapse" data-bs-target="#add-review">
+                        Write a review
+                    </button>
+
+                    <div class="collapse mb-3" id="add-review">
+                        <form asp-controller="Reviews" asp-action="Create" method="post" class="review">
+                            <input type="hidden" name="gameId" value="@Model.Id" />
+                            <div class="mb-2">
+                                <label for="review-score" class="form-label">Score</label>
+                                <select id="review-score" name="Score" class="form-select form-select-sm w-auto" required>
+                                    @for (int i = 5; i >= 1; i--)
+                                    {
+                                        <option value="@i">@i ★</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label for="review-comment" class="form-label">Comment</label>
+                                <textarea id="review-comment" name="Comment" class="form-control" rows="3" maxlength="1000" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">Post review</button>
+                        </form>
+                    </div>
+                }
+
                 @if (Model.Reviews != null && Model.Reviews.Any())
                 {
                     foreach (var review in Model.Reviews.OrderByDescending(r => r.DateRated))
                     {
                         int s = (int)Math.Round((double)review.Score);
+                        // Author, or Admin/Dev who manages this game. The controller re-checks on POST.
+                        bool canEditReview = review.IsMine || canManageGame;
                         <div class="review">
-                            <div class="d-flex justify-content-between">
-                                <span class="stars">@(new string('★', s))<span class="off">@(new string('★', Math.Max(0, 5 - s)))</span></span>
-                                <small class="text-muted">@review.DateRated?.ToString("MMM d, yyyy")</small>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex gap-2 align-items-center">
+                                    <strong>@review.GamerName</strong>
+                                    <span class="stars">@(new string('★', s))<span class="off">@(new string('★', Math.Max(0, 5 - s)))</span></span>
+                                </div>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <small class="text-muted">@review.DateRated?.ToString("MMM d, yyyy")</small>
+                                    @if (canEditReview)
+                                    {
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                data-bs-toggle="collapse" data-bs-target="#edit-review-@review.Id">Edit</button>
+                                    }
+                                    @if (canManageGame)
+                                    {
+                                        <form asp-controller="Reviews" asp-action="Delete" asp-route-id="@review.Id" method="post"
+                                              data-confirm="Delete this review?">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                                        </form>
+                                    }
+                                </div>
                             </div>
                             @if (!string.IsNullOrEmpty(review.Comment))
                             {
                                 <div class="mt-1">@review.Comment</div>
+                            }
+
+                            @if (canEditReview)
+                            {
+                                <div class="collapse mt-2" id="edit-review-@review.Id">
+                                    <form asp-controller="Reviews" asp-action="Edit" asp-route-id="@review.Id" method="post">
+                                        <div class="d-flex gap-2 mb-2">
+                                            <select name="Score" class="form-select form-select-sm w-auto" required>
+                                                @for (int i = 5; i >= 1; i--)
+                                                {
+                                                    <option value="@i" selected="@(i == review.Score)">@i ★</option>
+                                                }
+                                            </select>
+                                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                        </div>
+                                        <textarea name="Comment" class="form-control form-control-sm" rows="2" maxlength="1000" required>@review.Comment</textarea>
+                                    </form>
+                                </div>
                             }
                         </div>
                     }

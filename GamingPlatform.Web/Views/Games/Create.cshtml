@@ -10,7 +10,7 @@
     <a asp-action="Index" class="btn btn-outline-secondary btn-sm">&larr; Back to store</a>
 </div>
 
-<form asp-action="Create" method="post">
+<form asp-action="Create" method="post" enctype="multipart/form-data">
     <partial name="_GameForm" model="Model" view-data="ViewData" />
 </form>
 

@@ -311,7 +311,7 @@ namespace GamingPlatform.Repository.Migrations
 
                     b.Property<string>("GamerId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("PlayTimeHours")
                         .HasColumnType("int");
@@ -319,6 +319,9 @@ namespace GamingPlatform.Repository.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("GameId");
+
+                    b.HasIndex("GamerId", "GameId")
+                        .IsUnique();
 
                     b.ToTable("Libraries");
                 });
@@ -339,7 +342,7 @@ namespace GamingPlatform.Repository.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("GamerId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("Score")
                         .HasColumnType("int");
@@ -347,6 +350,10 @@ namespace GamingPlatform.Repository.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("GameId");
+
+                    b.HasIndex("GamerId", "GameId")
+                        .IsUnique()
+                        .HasFilter("[GamerId] IS NOT NULL AND [GameId] IS NOT NULL");
 
                     b.ToTable("Reviews");
                 });
@@ -361,11 +368,15 @@ namespace GamingPlatform.Repository.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("GamerId")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("GameId");
+
+                    b.HasIndex("GamerId", "GameId")
+                        .IsUnique()
+                        .HasFilter("[GamerId] IS NOT NULL AND [GameId] IS NOT NULL");
 
                     b.ToTable("Wishlists");
                 });
@@ -590,6 +601,12 @@ namespace GamingPlatform.Repository.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", null)
+                        .WithMany()
+                        .HasForeignKey("GamerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Game");
                 });
 
@@ -598,6 +615,11 @@ namespace GamingPlatform.Repository.Migrations
                     b.HasOne("GamingPlatform.Domain.Models.Game", null)
                         .WithMany("Reviews")
                         .HasForeignKey("GameId");
+
+                    b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", null)
+                        .WithMany()
+                        .HasForeignKey("GamerId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("GamingPlatform.Domain.Models.Wishlist", b =>
@@ -605,6 +627,11 @@ namespace GamingPlatform.Repository.Migrations
                     b.HasOne("GamingPlatform.Domain.Models.Game", null)
                         .WithMany("Wishlists")
                         .HasForeignKey("GameId");
+
+                    b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", null)
+                        .WithMany()
+                        .HasForeignKey("GamerId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

@@ -1,4 +1,5 @@
-﻿using GamingPlatform.Domain.Identity;
+﻿using GamingPlatform.Domain.Enum;
+using GamingPlatform.Domain.Identity;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
 using GamingPlatform.Service.Interfaces;
@@ -47,10 +48,41 @@ namespace GamingPlatform.Web.Controllers
             if (user == null) return RedirectToAction("Index", "Account");
 
             var target = await _userManager.FindByNameAsync(username?.Trim() ?? "");
-            bool ok = target != null && _friendService.SendFriendRequest(user.Id, target.Id);
+            var result = target == null
+                ? FriendRequestResult.UserNotFound
+                : _friendService.SendFriendRequest(user.Id, target.Id);
 
-            // Same message either way, so people can't probe which usernames exist
-            TempData["FriendMessage"] = ok ? "Friend request sent!" : "Unable to send request.";
+            switch (result)
+            {
+                case FriendRequestResult.Sent:
+                    TempData["FriendMessage"] = "Friend request sent!";
+                    break;
+                case FriendRequestResult.Accepted:
+                    TempData["FriendMessage"] = $"{target!.UserName} had already sent you a request. You are now friends!";
+                    break;
+                default:
+                    TempData["Error"] = result switch
+                    {
+                        FriendRequestResult.UserNotFound => "User does not exist.",
+                        FriendRequestResult.Self => "You can't add yourself as a friend.",
+                        FriendRequestResult.AlreadyFriends => "You are already friends.",
+                        FriendRequestResult.AlreadyPending => "Request is already pending.",
+                        FriendRequestResult.YouBlocked => "You have blocked this user. Unblock them first.",
+                        _ => "You can't send a friend request to this user." // blocked by them: don't reveal it
+                    };
+                    break;
+            }
+            return RedirectToAction("Index", "Account");
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> CancelRequest(string requestId)
+        {
+            var user = await GetVerifiedUserAsync();
+            if (user == null) return RedirectToAction("Index", "Account");
+
+            _friendService.CancelFriendRequest(user.Id, requestId);
+            TempData["FriendMessage"] = "Friend request cancelled.";
             return RedirectToAction("Index", "Account");
         }
 

@@ -130,11 +130,10 @@
     }
 
     // ---------- Cover image live preview on game forms ----------
-    var coverInput = document.getElementById('CoverImageUrl');
+    var coverInput = document.getElementById('CoverFile');
     var coverPreview = document.getElementById('cover-preview');
     if (coverInput && coverPreview) {
-        var render = function () {
-            var url = coverInput.value.trim();
+        var render = function (url) {
             coverPreview.innerHTML = '';
             if (!url) { coverPreview.textContent = 'Cover preview'; return; }
             var img = new Image();
@@ -142,8 +141,11 @@
             img.src = url;
             coverPreview.appendChild(img);
         };
-        coverInput.addEventListener('input', render);
-        render();
+        coverInput.addEventListener('change', function () {
+            var f = coverInput.files[0];
+            render(f ? URL.createObjectURL(f) : coverPreview.dataset.current);
+        });
+        render(coverPreview.dataset.current); // existing cover on Edit
     }
 
     // ---------- Avatar upload preview ----------

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace GamingPlatform.Domain.DTO
 {
@@ -24,6 +25,7 @@ namespace GamingPlatform.Domain.DTO
 
         public string? Platform { get; set; }
         public string? CoverImageUrl { get; set; }
+        public IFormFile? CoverFile { get; set; }
         public string? SystemRequirements { get; set; }
 
         public Guid? DevId { get; set; } // only used by admins on Create

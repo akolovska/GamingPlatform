@@ -5,6 +5,7 @@ using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Data;
 using GamingPlatform.Service.Implementations;
 using GamingPlatform.Service.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -20,6 +21,7 @@ using System.Threading.Tasks;
 
 namespace GamingPlatform.Web.Controllers
 {
+    [Authorize]
     public class LibrariesController : Controller
     {
         private readonly ILibraryService _libraryService;
@@ -127,7 +129,8 @@ namespace GamingPlatform.Web.Controllers
             return View(gameDto);
         }
         [HttpPost]
-        public async Task<IActionResult> BuyGame(string stripeSessionId, Guid gameId)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BuyGame(Guid gameId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
@@ -139,7 +142,21 @@ namespace GamingPlatform.Web.Controllers
             }
 
             var game = _gameService.GetGameById(gameId);
-            if (game == null) return NotFound();
+            if (game == null || game.IsDelisted) return NotFound();
+
+            if (_libraryService.IsGameInLibrary(userId, gameId))
+            {
+                TempData["Success"] = "You already own this game.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Free games skip Stripe
+            if ((game.Price ?? 0) <= 0)
+            {
+                _libraryService.AddGameToLibrary(userId, gameId);
+                TempData["Success"] = "Game added to your library.";
+                return RedirectToAction(nameof(Index));
+            }
 
             // Create Stripe Checkout session
             var options = new SessionCreateOptions
@@ -163,28 +180,60 @@ namespace GamingPlatform.Web.Controllers
                 }
             },
                 Mode = "payment",
-                SuccessUrl = Url.Action("PaymentSuccess", "Libraries", new { gameId = game.Id }, Request.Scheme),
-                CancelUrl = Url.Action("Details", "Games", new { id = game.Id }, Request.Scheme)
+                // Stripe replaces {CHECKOUT_SESSION_ID} with the real id; Url.Action would encode the braces
+                SuccessUrl = Url.Action("PaymentSuccess", "Libraries", null, Request.Scheme) + "?session_id={CHECKOUT_SESSION_ID}",
+                CancelUrl = Url.Action("Details", "Games", new { id = game.Id }, Request.Scheme),
+                // Set server-side, so the browser can't change which game or user gets it
+                ClientReferenceId = userId,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["gameId"] = game.Id.ToString(),
+                    ["userId"] = userId
+                }
             };
-            StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
-            var service = new SessionService();
-            Session session = service.Create(options);
+            Session session = await StripeSessions().CreateAsync(options);
 
             // Redirect user to Stripe Checkout
             return Redirect(session.Url);
         }
 
         [HttpGet]
-        public IActionResult PaymentSuccess(Guid gameId)
+        public async Task<IActionResult> PaymentSuccess(string session_id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (string.IsNullOrEmpty(session_id)) return BadRequest();
 
-            // Add the purchased game to library
-            _libraryService.AddGameToLibrary(userId, gameId);
+            // Ask Stripe what actually happened instead of trusting the URL
+            Session session;
+            try
+            {
+                session = await StripeSessions().GetAsync(session_id);
+            }
+            catch (StripeException)
+            {
+                return BadRequest();
+            }
+
+            if (session.PaymentStatus != "paid")
+            {
+                TempData["Error"] = "Payment was not completed.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (session.Metadata == null ||
+                !session.Metadata.TryGetValue("userId", out var paidBy) || paidBy != userId ||
+                !session.Metadata.TryGetValue("gameId", out var gameIdText) || !Guid.TryParse(gameIdText, out var gameId))
+                return Forbid();
+
+            // Refreshing this page must not add the game twice
+            if (!_libraryService.IsGameInLibrary(userId, gameId))
+                _libraryService.AddGameToLibrary(userId, gameId);
 
             TempData["Success"] = "Payment successful! Game added to your library.";
             return RedirectToAction(nameof(Index));
         }
+
+        private SessionService StripeSessions() => new SessionService(new StripeClient(_stripeSettings.SecretKey));
     }
 }
