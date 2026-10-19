@@ -1,23 +1,23 @@
 @using GamingPlatform.Web.Helpers
-@model IEnumerable<GamingPlatform.Domain.DTO.GameDto>
+@model GamingPlatform.Domain.DTO.WishlistDto
 
 @{
-    ViewData["Title"] = "Wishlist";
+    ViewData["Title"] = $"{Model.OwnerName}'s wishlist";
 }
 
 <div class="page-header">
-    <h2>Wishlist <small class="text-muted fs-6">@Model.Count() @(Model.Count() == 1 ? "game" : "games")</small></h2>
-    <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm">&larr; Back</a>
+    <h2>@Model.OwnerName's wishlist <small class="text-muted fs-6">@Model.Games.Count @(Model.Games.Count == 1 ? "game" : "games")</small></h2>
+    <a asp-controller="Account" asp-action="Details" asp-route-username="@Model.OwnerName" class="btn btn-outline-secondary btn-sm">&larr; Back to profile</a>
 </div>
 
-@if (!Model.Any())
+@if (!Model.Games.Any())
 {
     <div class="empty-state"><span class="icon">&#9825;</span>This wishlist is empty.</div>
 }
 else
 {
     <div class="row g-4">
-        @foreach (var game in Model)
+        @foreach (var game in Model.Games)
         {
             <div class="col-6 col-md-4 col-lg-3">
                 <partial name="_GameCard" model="GameCardModel.From(game)" />

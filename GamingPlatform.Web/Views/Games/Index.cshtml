@@ -1,14 +1,28 @@
 @using GamingPlatform.Web.Helpers
-@model IEnumerable<GamingPlatform.Domain.Models.Game>
+@using GamingPlatform.Domain.DTO
+@using GamingPlatform.Domain.Identity
+@model PagedResult<GameDto>
 
 @{
     ViewData["Title"] = "Store";
 
-    var genres = ViewBag.Genres as List<GamingPlatform.Domain.Models.Genre> ?? new();
-    var trending = ViewBag.Trending as List<GamingPlatform.Domain.Models.Game> ?? new();
-    Guid? selectedGenreId = ViewBag.SelectedGenreId as Guid?;
-    string? selectedFilter = ViewBag.SelectedFilter as string;
+    var query = ViewBag.Query as StoreQueryDto ?? new StoreQueryDto();
+    var genres = ViewBag.Genres as List<GenreDto> ?? new();
+    var trending = ViewBag.Trending as List<GameDto> ?? new();
+    var recommendations = ViewBag.Recommendations as List<RecommendationDto> ?? new();
     var featured = trending.FirstOrDefault();
+
+    // Every link keeps the other filters; only the given values change
+    object Route(int? page = null, Guid? genreId = null, bool clearGenre = false) => new
+    {
+        q = query.Q,
+        genreId = clearGenre ? null : genreId ?? query.GenreId,
+        free = query.Free ? true : (bool?)null,
+        onSale = query.OnSale ? true : (bool?)null,
+        comingSoon = query.ComingSoon ? true : (bool?)null,
+        sort = query.Sort == StoreSort.Name ? null : query.Sort.ToString(),
+        page = page is > 1 ? page : null
+    };
 }
 
 @if (featured != null)
@@ -24,9 +38,7 @@
             <p class="mb-3 col-lg-7 text-truncate" style="max-width:640px">@featured.Description</p>
             <div class="d-flex align-items-center gap-3">
                 <a asp-action="Details" asp-route-id="@featured.Id" class="btn btn-primary">View game</a>
-                <span class="price-tag @((featured.Price ?? 0) == 0 ? "" : "paid")">
-                    @((featured.Price ?? 0) == 0 ? "Free to Play" : $"${featured.Price:0.00}")
-                </span>
+                <partial name="_Price" model="GameCardModel.From(featured)" />
             </div>
         </div>
     </section>
@@ -34,11 +46,22 @@
 
 <div class="page-header">
     <h2>Store</h2>
-    @if (User.IsInRole("Admin") || User.IsInRole("Dev"))
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Dev))
     {
         <a asp-action="Create" class="btn btn-success">+ Add game</a>
     }
 </div>
+
+@foreach (var row in recommendations)
+{
+    <div class="section-title">Because you played <a asp-controller="Libraries" asp-action="Details" asp-route-id="@row.BasedOnId">&nbsp;@row.BasedOnTitle</a></div>
+    <div class="scroller mb-2">
+        @foreach (var game in row.Games)
+        {
+            <div><partial name="_GameCard" model="GameCardModel.From(game)" /></div>
+        }
+    </div>
+}
 
 @if (trending.Count > 1)
 {
@@ -46,55 +69,80 @@
     <div class="scroller mb-2">
         @foreach (var game in trending)
         {
-            <div>
-                <partial name="_GameCard" model="GameCardModel.From(game)" />
-            </div>
+            <div><partial name="_GameCard" model="GameCardModel.From(game)" /></div>
         }
     </div>
 }
 
-<div class="section-title">Browse all</div>
+<div class="section-title">@(query.IsFiltered ? "Search results" : "Browse all")</div>
 
-<div class="toolbar mb-4">
-    <div class="d-flex flex-wrap gap-2 flex-grow-1">
-        <a asp-action="Index" asp-route-filter="@selectedFilter"
-           class="chip @(selectedGenreId == null ? "active" : "")">All genres</a>
-        @foreach (var g in genres)
-        {
-            <a asp-action="Index" asp-route-genreId="@g.Id" asp-route-filter="@selectedFilter"
-               class="chip @(g.Id == selectedGenreId ? "active" : "")">@g.Name</a>
-        }
-    </div>
-    <div class="d-flex gap-2 align-items-center flex-wrap">
-        <input id="game-search" type="search" class="form-control form-control-sm" style="width:200px"
-               placeholder="Filter by name..." autocomplete="off" />
-        <span id="chip-free" class="chip" role="button" tabindex="0">Free to play</span>
-        <select id="game-sort" class="form-select form-select-sm" style="width:auto">
-            <option value="default">Sort: Featured</option>
-            <option value="name">Name (A-Z)</option>
-            <option value="price-asc">Price: low to high</option>
-            <option value="price-desc">Price: high to low</option>
-            <option value="newest">Newest first</option>
-        </select>
-        <small id="result-count" class="text-muted"></small>
-    </div>
-</div>
+@* A plain GET form: filters work without JavaScript; site.js submits it when a box or the sort changes *@
+<form method="get" asp-action="Index" class="toolbar mb-3">
+    <input type="hidden" name="genreId" value="@query.GenreId" />
+    <input name="q" value="@query.Q" type="search" class="form-control form-control-sm" style="width:220px" placeholder="Search titles, genres, studios..." autocomplete="off" />
+    <label class="chip mb-0 @(query.Free ? "active" : "")"><input type="checkbox" name="free" value="true" class="d-none" data-autosubmit checked="@query.Free" />Free to play</label>
+    <label class="chip mb-0 @(query.OnSale ? "active" : "")"><input type="checkbox" name="onSale" value="true" class="d-none" data-autosubmit checked="@query.OnSale" />On sale</label>
+    <label class="chip mb-0 @(query.ComingSoon ? "active" : "")"><input type="checkbox" name="comingSoon" value="true" class="d-none" data-autosubmit checked="@query.ComingSoon" />Coming soon</label>
+    <select name="sort" class="form-select form-select-sm" style="width:auto" data-autosubmit aria-label="Sort by">
+        <option value="Name" selected="@(query.Sort == StoreSort.Name)">Name (A-Z)</option>
+        <option value="Popular" selected="@(query.Sort == StoreSort.Popular)">Most popular</option>
+        <option value="TopRated" selected="@(query.Sort == StoreSort.TopRated)">Top rated</option>
+        <option value="Newest" selected="@(query.Sort == StoreSort.Newest)">Newest first</option>
+        <option value="PriceLow" selected="@(query.Sort == StoreSort.PriceLow)">Price: low to high</option>
+        <option value="PriceHigh" selected="@(query.Sort == StoreSort.PriceHigh)">Price: high to low</option>
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+    <small class="text-muted ms-auto">@Model.TotalCount @(Model.TotalCount == 1 ? "game" : "games")</small>
+</form>
 
-<div class="row g-4" id="game-grid">
-    @foreach (var game in Model)
+<div class="d-flex flex-wrap gap-2 mb-4">
+    <a asp-action="Index" asp-all-route-data="@ToStrings(Route(clearGenre: true))" class="chip @(query.GenreId == null ? "active" : "")">All genres</a>
+    @foreach (var g in genres)
     {
-        <div class="col-6 col-md-4 col-lg-3"
-             data-title="@(game.Title?.ToLowerInvariant())"
-             data-meta="@(($"{game.GenreNames} {game.Platform}").ToLowerInvariant())"
-             data-price="@((game.Price ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))"
-             data-date="@game.ReleaseDate?.ToString("yyyy-MM-dd")">
-            <partial name="_GameCard" model="GameCardModel.From(game)" />
-        </div>
+        <a asp-action="Index" asp-all-route-data="@ToStrings(Route(genreId: g.Id))" class="chip @(g.Id == query.GenreId ? "active" : "")">@g.Name</a>
     }
 </div>
 
-<div id="no-results" class="empty-state @(Model.Any() ? "d-none" : "")">
-    <span class="icon">&#127918;</span>
-    No games match your filters.
-    <div class="mt-3"><a asp-action="Index" class="btn btn-outline-secondary btn-sm">Reset filters</a></div>
-</div>
+@if (Model.Items.Any())
+{
+    <div class="row g-4">
+        @foreach (var game in Model.Items)
+        {
+            <div class="col-6 col-md-4 col-lg-3">
+                <partial name="_GameCard" model="GameCardModel.From(game)" />
+            </div>
+        }
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="d-flex justify-content-center align-items-center gap-2 mt-4" aria-label="Pages">
+            @if (Model.Page > 1)
+            {
+                <a asp-action="Index" asp-all-route-data="@ToStrings(Route(page: Model.Page - 1))" class="btn btn-outline-secondary btn-sm">&larr; Previous</a>
+            }
+            <span class="text-muted small">Page @Model.Page of @Model.TotalPages</span>
+            @if (Model.Page < Model.TotalPages)
+            {
+                <a asp-action="Index" asp-all-route-data="@ToStrings(Route(page: Model.Page + 1))" class="btn btn-outline-secondary btn-sm">Next &rarr;</a>
+            }
+        </nav>
+    }
+}
+else
+{
+    <div class="empty-state">
+        <span class="icon">&#127918;</span>
+        No games match your search.
+        <div class="mt-3"><a asp-action="Index" class="btn btn-outline-secondary btn-sm">Reset filters</a></div>
+    </div>
+}
+
+@functions {
+    // asp-all-route-data wants a dictionary of strings; empty values are left out of the URL
+    private static Dictionary<string, string> ToStrings(object values) =>
+        values.GetType().GetProperties()
+            .Select(p => (p.Name, Value: p.GetValue(values)?.ToString()))
+            .Where(x => !string.IsNullOrEmpty(x.Value))
+            .ToDictionary(x => x.Name, x => x.Value!);
+}

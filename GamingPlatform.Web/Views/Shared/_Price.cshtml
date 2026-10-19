@@ -1,0 +1,15 @@
+@model GamingPlatform.Web.Helpers.GameCardModel
+@* A price tag: "Free to Play", "$19.99", or "-30% $19.99 $13.99" during a sale *@
+@if (Model.IsFree)
+{
+    <span class="price-tag">Free to Play</span>
+}
+else if (Model.DiscountPercent > 0)
+{
+    <span class="discount-badge">-@Model.DiscountPercent%</span>
+    <span class="price-tag sale"><span class="price-old">$@Model.Price?.ToString("0.00")</span>$@Model.CurrentPrice.ToString("0.00")</span>
+}
+else
+{
+    <span class="price-tag paid">$@Model.CurrentPrice.ToString("0.00")</span>
+}

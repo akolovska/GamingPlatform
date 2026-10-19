@@ -2,7 +2,6 @@
 
 @{
     ViewData["Title"] = Model.Title;
-    bool free = (Model.Price ?? 0) == 0;
 }
 
 <nav class="mb-3 small">
@@ -23,8 +22,19 @@
         </div>
         <div class="buy-box mt-3">
             <div>
-                <span class="badge-pill" style="color:#a4d007">&#10003; Owned</span>
-                <div class="small text-muted mt-1">Paid: @(free ? "Free" : $"${Model.Price:0.00}")</div>
+                @if (Model.IsComingSoon)
+                {
+                    <span class="badge-pill" style="color:var(--warning)">Pre-ordered</span>
+                    <div class="small text-muted mt-1">Available @Model.ReleaseDate?.ToString("MMMM d, yyyy").</div>
+                }
+                else
+                {
+                    <span class="badge-pill" style="color:#a4d007">&#10003; Owned</span>
+                }
+                @if (Model.IsDelisted)
+                {
+                    <div class="small text-muted mt-1">No longer sold in the store, but it stays in your library.</div>
+                }
             </div>
             <a asp-controller="Games" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">Store page</a>
         </div>
@@ -33,7 +43,7 @@
     <div class="col-lg-7">
         <h1 class="fw-bold mb-2">@Model.Title</h1>
         <div class="d-flex flex-wrap gap-2 mb-3">
-            @foreach (var gg in Model.GameGenres.Where(x => x.Genre != null).OrderBy(x => x.Genre!.Name)) { <span class="badge-pill">@gg.Genre!.Name</span> }
+            @foreach (var genre in Model.Genres) { <span class="badge-pill">@genre</span> }
             @if (!string.IsNullOrWhiteSpace(Model.Platform)) { <span class="badge-pill">@Model.Platform</span> }
             @if (Model.Rating != null) { <span class="badge-pill"><span class="stars">★</span> @Model.Rating.Value.ToString("0.0") / 5</span> }
         </div>
@@ -44,10 +54,10 @@
             <div class="col-md-6">
                 <div class="panel h-100">
                     <h6 class="text-uppercase small text-muted">Developers</h6>
-                    @if (Model.Developers != null && Model.Developers.Any())
+                    @if (Model.Developers.Any())
                     {
                         <div class="d-flex flex-wrap gap-2">
-                            @foreach (var dev in Model.Developers) { <span class="badge-pill">@dev.Name</span> }
+                            @foreach (var dev in Model.Developers) { <a asp-controller="Studios" asp-action="Details" asp-route-id="@dev.Id" class="badge-pill">@dev.Name</a> }
                         </div>
                     }
                     else { <span class="text-muted">None listed.</span> }
@@ -66,7 +76,7 @@
         </div>
 
         <div class="section-title">Achievements</div>
-        @if (Model.Achievements != null && Model.Achievements.Any())
+        @if (Model.Achievements.Any())
         {
             foreach (var a in Model.Achievements)
             {

@@ -1,111 +1,67 @@
 ﻿using GamingPlatform.Domain.DTO;
 using GamingPlatform.Domain.Identity;
-using GamingPlatform.Domain.Models;
 using GamingPlatform.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace GamingPlatform.Web.Controllers
 {
-    public class AchievementsController : Controller
+    // Achievements are edited from the game's Edit page
+    [Authorize(Roles = Roles.DevOrAdmin)]
+    public class AchievementsController : AppController
     {
-        private readonly IAchievementService _achievementService;
-        private readonly IGameService _gameService;
+        private const string FormError = "Name is required (max 100 characters), description max 500.";
 
-        public AchievementsController(IAchievementService achievementService, IGameService gameService)
+        private readonly IAchievementService _achievementService;
+
+        public AchievementsController(IAchievementService achievementService)
         {
             _achievementService = achievementService;
-            _gameService = gameService;
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = Roles.DevOrAdmin)]
-        public IActionResult Create(AchievementFormDto form, Guid gameId)
+        [HttpPost, ValidateAntiForgeryToken]
+        public IActionResult Create(Guid gameId, AchievementFormDto form)
         {
-            var game = _gameService.GetGameById(gameId);
-            if (game == null) return NotFound();
-            if (!CanManage(game)) return Forbid();
-
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                Achievement achievement = new Achievement
-                {
-                    GameId = gameId,
-                    Name = form.Name,
-                    Description = form.Description,
-                    Id = Guid.NewGuid()
-                };
-                _achievementService.AddAchievement(achievement);
-            }
-            else
-            {
-                TempData["Error"] = "Achievement not added. Name is required (max 100 characters), description max 500.";
+                TempData["Error"] = FormError;
+                return RedirectToEdit(gameId);
             }
 
-            return RedirectToAction("Edit", "Games", new { id = gameId });
+            var result = _achievementService.Add(gameId, form, UserId!, IsAdmin);
+            if (!result.Succeeded) return Failure(result);
+
+            Flash(result);
+            return RedirectToEdit(gameId);
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = Roles.DevOrAdmin)]
-        public IActionResult Edit(Guid id, AchievementFormDto form)
+        [HttpPost, ValidateAntiForgeryToken]
+        public IActionResult Edit(Guid id, AchievementFormDto form, Guid gameId)
         {
-            var achievement = _achievementService.GetAchievementById(id);
-            if (achievement == null) return NotFound();
-            if (!CanManageAchievement(achievement)) return Forbid();
-
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                achievement.Name = form.Name;
-                achievement.Description = form.Description;
-                _achievementService.UpdateAchievement(achievement);
-            }
-            else
-            {
-                TempData["Error"] = "Achievement not saved. Name is required (max 100 characters), description max 500.";
+                TempData["Error"] = FormError;
+                return RedirectToEdit(gameId);
             }
 
-            return RedirectToAction("Edit", "Games", new { id = achievement.GameId });
+            var result = _achievementService.Update(id, form, UserId!, IsAdmin);
+            if (!result.Succeeded) return Failure(result);
+
+            Flash(result);
+            return RedirectToEdit(result.Value);
         }
 
-        // POST: Achievements/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = Roles.DevOrAdmin)]
-        public IActionResult DeleteConfirmed(Guid id)
+        [HttpPost, ValidateAntiForgeryToken]
+        public IActionResult Delete(Guid id)
         {
-            var achievement = _achievementService.GetAchievementById(id);
-            if (achievement == null)
-            {
-                return NotFound();
-            }
-            if (!CanManageAchievement(achievement)) return Forbid();
+            var result = _achievementService.Delete(id, UserId!, IsAdmin);
+            if (!result.Succeeded) return Failure(result);
 
-            _achievementService.DeleteAchievement(id);
-
-            return RedirectToAction("Edit", "Games", new { id = achievement.GameId });
+            Flash(result);
+            return RedirectToEdit(result.Value);
         }
 
-        // Same rule as GamesController.CanManage: Admin any game, Dev only games linked to their own studio.
-        private bool CanManage(Game game)
-        {
-            if (User.IsInRole(Roles.Admin)) return true;
-            if (!User.IsInRole(Roles.Dev)) return false;
-
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            return game.GameDevelopers?.Any(gd => gd.Developer?.UserId == userId) == true;
-        }
-
-        private bool CanManageAchievement(Achievement achievement)
-        {
-            var game = _gameService.GetGameById(achievement.GameId);
-            return game != null && CanManage(game);
-        }
+        private IActionResult RedirectToEdit(Guid gameId) =>
+            RedirectToAction("Edit", "Games", new { id = gameId });
     }
 }

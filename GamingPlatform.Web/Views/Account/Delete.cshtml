@@ -1,0 +1,47 @@
+@model GamingPlatform.Domain.DTO.DeleteAccountDto
+@{
+    ViewData["Title"] = "Delete account";
+    bool hasPassword = ViewBag.HasPassword as bool? ?? true;
+}
+
+<div class="auth-wrap">
+    <div class="auth-card">
+        <h2 class="mb-2 text-danger">Delete your account</h2>
+        <p class="text-muted">This permanently deletes:</p>
+        <ul class="text-muted">
+            <li>your profile and profile picture</li>
+            <li>your library (games you bought are lost)</li>
+            <li>your wishlist, cart, friends, blocked users and notifications</li>
+        </ul>
+        <p class="text-muted mb-4">
+            Your reviews stay on the store, shown as written by "Deleted user". Receipts of past purchases are kept
+            for accounting, without your name. This can't be undone.
+        </p>
+
+        <form asp-action="Delete" method="post" data-confirm="Delete your account permanently? This can't be undone.">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <div class="mb-4">
+                @if (hasPassword)
+                {
+                    <label asp-for="Password" class="form-label">Enter your password to confirm</label>
+                    <input asp-for="Password" class="form-control" autocomplete="current-password" />
+                }
+                else
+                {
+                    @* Accounts made with Google have no password, so they type their username *@
+                    <label asp-for="Password" class="form-label">Type your username (@User.Identity?.Name) to confirm</label>
+                    <input asp-for="Password" type="text" class="form-control" autocomplete="off" />
+                }
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-danger w-100">Delete my account</button>
+            <a asp-action="Edit" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

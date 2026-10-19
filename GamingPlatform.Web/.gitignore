@@ -1,3 +1,5 @@
 .env
 wwwroot/uploads
 wwwroot/images
+.agents
+.claude

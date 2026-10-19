@@ -1,105 +1,74 @@
 ﻿using GamingPlatform.Domain.DTO;
-using GamingPlatform.Domain.Identity;
-using GamingPlatform.Domain.Models;
 using GamingPlatform.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace GamingPlatform.Web.Controllers
 {
     [Authorize]
-    public class ReviewsController : Controller
+    public class ReviewsController : AppController
     {
-        private readonly IReviewService _reviewService;
-        private readonly IGameService _gameService;
-        private readonly ILibraryService _libraryService;
+        private const string FormError = "Please give a score from 1 to 5 and a comment (max 1000 characters).";
 
-        public ReviewsController(IReviewService reviewService, IGameService gameService, ILibraryService libraryService)
+        private readonly IReviewService _reviewService;
+
+        public ReviewsController(IReviewService reviewService)
         {
             _reviewService = reviewService;
-            _gameService = gameService;
-            _libraryService = libraryService;
         }
 
-        // Only players who own the game, one review per game
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         public IActionResult Create(Guid gameId, ReviewFormDto dto)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-
-            if (_gameService.GetGameById(gameId) == null) return NotFound();
-            if (!_libraryService.IsGameInLibrary(userId, gameId)) return Forbid();
-
-            if (_reviewService.GetUserReviewForGame(userId, gameId) != null)
-            {
-                TempData["Error"] = "You have already reviewed this game.";
-                return RedirectToGame(gameId);
-            }
-
             if (!ModelState.IsValid)
             {
-                TempData["Error"] = "Please give a score from 1 to 5 and a comment.";
+                TempData["Error"] = FormError;
                 return RedirectToGame(gameId);
             }
 
-            _reviewService.AddReview(userId, gameId, dto);
-            TempData["Success"] = "Review posted.";
+            var result = _reviewService.Add(UserId!, gameId, dto);
+            if (result.Status is Service.ResultStatus.NotFound or Service.ResultStatus.Forbidden) return Failure(result);
+
+            Flash(result);
             return RedirectToGame(gameId);
         }
 
-        // Author, or Admin/Dev who manages the game
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult Edit(Guid id, ReviewFormDto dto)
+        [HttpPost, ValidateAntiForgeryToken]
+        public IActionResult Edit(Guid id, ReviewFormDto dto, Guid gameId)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-
-            var review = _reviewService.GetReviewById(id);
-            if (review?.GameId == null) return NotFound();
-
-            var game = _gameService.GetGameById(review.GameId.Value);
-            if (game == null) return NotFound();
-            if (review.GamerId != userId && !CanModerate(game, userId)) return Forbid();
-
             if (!ModelState.IsValid)
             {
-                TempData["Error"] = "Please give a score from 1 to 5 and a comment.";
-                return RedirectToGame(game.Id);
+                TempData["Error"] = FormError;
+                return RedirectToGame(gameId);
             }
 
-            _reviewService.UpdateReview(review, dto);
-            TempData["Success"] = "Review updated.";
-            return RedirectToGame(game.Id);
+            var result = _reviewService.Update(id, UserId!, dto);
+            if (!result.Succeeded) return Failure(result);
+
+            Flash(result);
+            return RedirectToGame(result.Value);
         }
 
-        // Admin, or Dev who manages the game
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         public IActionResult Delete(Guid id)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var result = _reviewService.Delete(id, UserId!, IsAdmin);
+            if (!result.Succeeded) return Failure(result);
 
-            var review = _reviewService.GetReviewById(id);
-            if (review?.GameId == null) return NotFound();
-
-            var game = _gameService.GetGameById(review.GameId.Value);
-            if (game == null) return NotFound();
-            if (!CanModerate(game, userId)) return Forbid();
-
-            _reviewService.DeleteReview(review);
-            TempData["Success"] = "Review deleted.";
-            return RedirectToGame(game.Id);
+            Flash(result);
+            return RedirectToGame(result.Value);
         }
 
-        // Same rule as GamesController.CanManage: Admin any game, Dev only their studio's games
-        private bool CanModerate(Game game, string userId)
+        // helpful = true for up, false for down. The same arrow again takes the vote back.
+        [HttpPost, ValidateAntiForgeryToken]
+        public IActionResult Vote(Guid id, bool helpful, Guid gameId, string? reviews)
         {
-            if (User.IsInRole(Roles.Admin)) return true;
-            if (!User.IsInRole(Roles.Dev)) return false;
+            var result = _reviewService.Vote(id, UserId!, helpful);
+            if (result.Status == Service.ResultStatus.NotFound) return Failure(result);
+            if (!result.Succeeded) Flash(result);
 
-            return game.GameDevelopers?.Any(gd => gd.Developer?.UserId == userId) == true;
+            // Back to the review itself, keeping the page's review sorting
+            return Redirect(Url.Action("Details", "Games", new { id = gameId, reviews }) + $"#review-{id}");
         }
 
         private IActionResult RedirectToGame(Guid gameId) =>

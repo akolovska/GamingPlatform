@@ -1,144 +1,93 @@
 ﻿using GamingPlatform.Domain.Enum;
-using GamingPlatform.Domain.Identity;
-using GamingPlatform.Domain.Models;
-using GamingPlatform.Repository.Data;
 using GamingPlatform.Service.Interfaces;
+using GamingPlatform.Web.Filters;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace GamingPlatform.Web.Controllers
 {
-    [Authorize]
-    public class FriendsController : Controller
+    [Authorize, RequireVerifiedEmail]
+    public class FriendsController : AppController
     {
         private readonly IFriendService _friendService;
-        private readonly UserManager<GamingPlatformUser> _userManager;
 
-        public FriendsController(IFriendService friendService, UserManager<GamingPlatformUser> userManager)
+        public FriendsController(IFriendService friendService)
         {
             _friendService = friendService;
-            _userManager = userManager;
-        }
-
-        // Returns the user only if logged in AND email confirmed
-        private async Task<GamingPlatformUser?> GetVerifiedUserAsync()
-        {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null) return null;
-
-            if (!await _userManager.IsEmailConfirmedAsync(user))
-            {
-                TempData["Verified"] = "Please verify your email to access all features.";
-                return null;
-            }
-            return user;
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddFriend(string username)
+        public IActionResult AddFriend(string username)
         {
-            var user = await GetVerifiedUserAsync();
-            if (user == null) return RedirectToAction("Index", "Account");
+            var result = _friendService.SendFriendRequest(UserId!, username);
 
-            var target = await _userManager.FindByNameAsync(username?.Trim() ?? "");
-            var result = target == null
-                ? FriendRequestResult.UserNotFound
-                : _friendService.SendFriendRequest(user.Id, target.Id);
+            if (result is FriendRequestResult.Sent or FriendRequestResult.Accepted)
+                TempData["Success"] = result == FriendRequestResult.Sent
+                    ? "Friend request sent!"
+                    : $"{username} had already sent you a request. You are now friends!";
+            else
+                TempData["Error"] = result switch
+                {
+                    FriendRequestResult.Self => "You can't add yourself as a friend.",
+                    FriendRequestResult.AlreadyFriends => "You are already friends.",
+                    FriendRequestResult.AlreadyPending => "Request is already pending.",
+                    FriendRequestResult.YouBlocked => "You have blocked this user. Unblock them first.",
+                    _ => "There is no user with that username."
+                };
 
-            switch (result)
-            {
-                case FriendRequestResult.Sent:
-                    TempData["FriendMessage"] = "Friend request sent!";
-                    break;
-                case FriendRequestResult.Accepted:
-                    TempData["FriendMessage"] = $"{target!.UserName} had already sent you a request. You are now friends!";
-                    break;
-                default:
-                    TempData["Error"] = result switch
-                    {
-                        FriendRequestResult.UserNotFound => "User does not exist.",
-                        FriendRequestResult.Self => "You can't add yourself as a friend.",
-                        FriendRequestResult.AlreadyFriends => "You are already friends.",
-                        FriendRequestResult.AlreadyPending => "Request is already pending.",
-                        FriendRequestResult.YouBlocked => "You have blocked this user. Unblock them first.",
-                        _ => "You can't send a friend request to this user." // blocked by them: don't reveal it
-                    };
-                    break;
-            }
-            return RedirectToAction("Index", "Account");
+            return BackToProfiles();
+        }
+
+        // userId is the other user's id in the actions below; the signed-in user always comes from the cookie
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public IActionResult CancelRequest(string userId)
+        {
+            _friendService.CancelFriendRequest(UserId!, userId);
+            TempData["Success"] = "Friend request cancelled.";
+            return BackToProfiles();
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> CancelRequest(string requestId)
+        public IActionResult AcceptFriend(Guid requestId)
         {
-            var user = await GetVerifiedUserAsync();
-            if (user == null) return RedirectToAction("Index", "Account");
-
-            _friendService.CancelFriendRequest(user.Id, requestId);
-            TempData["FriendMessage"] = "Friend request cancelled.";
-            return RedirectToAction("Index", "Account");
+            _friendService.AcceptFriendRequest(requestId, UserId!);
+            TempData["Success"] = "Friend request accepted!";
+            return BackToProfiles();
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> AcceptFriend(Guid requestId)
+        public IActionResult DeclineFriend(Guid requestId)
         {
-            var user = await GetVerifiedUserAsync();
-            if (user == null) return RedirectToAction("Index", "Account");
-
-            _friendService.AcceptFriendRequest(requestId, user.Id);
-            TempData["FriendMessage"] = "Friend request accepted!";
-            return RedirectToAction("Index", "Account");
+            _friendService.DeclineFriendRequest(requestId, UserId!);
+            TempData["Success"] = "Friend request declined.";
+            return BackToProfiles();
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeclineFriend(Guid requestId)
+        public IActionResult RemoveFriend(string userId)
         {
-            var user = await GetVerifiedUserAsync();
-            if (user == null) return RedirectToAction("Index", "Account");
-
-            _friendService.DeclineFriendRequest(requestId, user.Id);
-            TempData["FriendMessage"] = "Friend request declined.";
-            return RedirectToAction("Index", "Account");
+            _friendService.RemoveFriend(UserId!, userId);
+            TempData["Success"] = "Friend removed.";
+            return BackToProfiles();
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> RemoveFriend(string requestId)
+        public IActionResult BlockUser(string userId)
         {
-            var user = await GetVerifiedUserAsync();
-            if (user == null) return RedirectToAction("Index", "Account");
-
-            _friendService.RemoveFriend(user.Id, requestId);
-            TempData["FriendMessage"] = "Friend removed.";
-            return RedirectToAction("Index", "Account");
+            _friendService.BlockUser(UserId!, userId);
+            TempData["Success"] = "User blocked.";
+            return BackToProfiles();
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> BlockFriend(string requestId)
+        public IActionResult UnblockUser(string userId)
         {
-            var user = await GetVerifiedUserAsync();
-            if (user == null) return RedirectToAction("Index", "Account");
-
-            _friendService.BlockFriend(user.Id, requestId);
-            TempData["FriendMessage"] = "User blocked.";
-            return RedirectToAction("Index", "Account");
+            _friendService.UnblockUser(UserId!, userId);
+            TempData["Success"] = "User unblocked.";
+            return BackToProfiles();
         }
 
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> UnblockUser(string requestId)
-        {
-            var user = await GetVerifiedUserAsync();
-            if (user == null) return RedirectToAction("Index", "Account");
-
-            _friendService.UnblockUser(user.Id, requestId);
-            TempData["FriendMessage"] = "User unblocked.";
-            return RedirectToAction("Index", "Account");
-        }
+        private IActionResult BackToProfiles() => RedirectToAction("Index", "Account");
     }
 }

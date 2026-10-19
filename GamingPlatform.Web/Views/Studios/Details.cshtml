@@ -1,0 +1,40 @@
+@model GamingPlatform.Domain.DTO.StudioPageDto
+@using GamingPlatform.Web.Helpers
+@{
+    ViewData["Title"] = Model.Name;
+    var tone = GamingPlatform.Service.ReviewSummary.Tone(Model.ReviewSummary);
+}
+
+<section class="profile-banner mb-4">
+    <div class="flex-grow-1">
+        <span class="badge-pill mb-2">Studio</span>
+        <h2 class="mb-1">@Model.Name</h2>
+        <div class="d-flex flex-wrap gap-4 small">
+            <div><span class="fs-5 fw-bold text-white">@Model.Games.Count</span> <span class="text-muted">@(Model.Games.Count == 1 ? "game" : "games")</span></div>
+            @if (Model.ReviewCount > 0)
+            {
+                <div><span class="review-summary @tone">@Model.ReviewSummary</span> <span class="text-muted">(@Model.PositivePercent% of @Model.ReviewCount reviews)</span></div>
+            }
+        </div>
+    </div>
+    @if (Model.CanViewDashboard)
+    {
+        <a asp-action="Dashboard" asp-route-id="@Model.Id" class="btn btn-primary btn-sm">Dashboard</a>
+    }
+</section>
+
+@if (Model.Games.Any())
+{
+    <div class="row g-4">
+        @foreach (var game in Model.Games)
+        {
+            <div class="col-6 col-md-4 col-lg-3">
+                <partial name="_GameCard" model="GameCardModel.From(game)" />
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="empty-state"><span class="icon">&#127918;</span>This studio has no games in the store yet.</div>
+}

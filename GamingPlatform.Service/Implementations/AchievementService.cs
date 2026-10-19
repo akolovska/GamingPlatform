@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using GamingPlatform.Domain.DTO;
 using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Interface;
 using GamingPlatform.Service.Interfaces;
@@ -10,64 +8,56 @@ namespace GamingPlatform.Service.Implementations
     public class AchievementService : IAchievementService
     {
         private readonly IRepository<Achievement> _achievementRepository;
-        private readonly IRepository<GamerAchievement> _gamerAchievementRepository;
+        private readonly IGameService _gameService;
 
-        public AchievementService(IRepository<Achievement> achievementRepository, IRepository<GamerAchievement> gamerAchievementRepository)
+        public AchievementService(IRepository<Achievement> achievementRepository, IGameService gameService)
         {
             _achievementRepository = achievementRepository;
-            _gamerAchievementRepository = gamerAchievementRepository;
+            _gameService = gameService;
         }
 
-        public void AddAchievement(Achievement achievement)
+        public ServiceResult Add(Guid gameId, AchievementFormDto form, string userId, bool isAdmin)
         {
-            if (achievement == null) return;
-            if (achievement.Id == default)
+            var game = _gameService.GetGameById(gameId);
+            if (game == null) return ServiceResult.NotFound();
+            if (!_gameService.CanManage(game, userId, isAdmin)) return ServiceResult.Forbidden();
+
+            _achievementRepository.Insert(new Achievement
             {
-                achievement.Id = Guid.NewGuid();
-            }
-            _achievementRepository.Insert(achievement);
+                Id = Guid.NewGuid(),
+                GameId = gameId,
+                Name = form.Name?.Trim(),
+                Description = form.Description?.Trim()
+            });
+            return ServiceResult.Ok("Achievement added.");
         }
 
-        public void DeleteAchievement(Guid id)
+        public ServiceResult<Guid> Update(Guid id, AchievementFormDto form, string userId, bool isAdmin)
         {
-            if (id == null) return;
-            var achievement = _achievementRepository.Get(x => x, predicate: x => x.Id == id);
-            if (achievement != null)
-            {
-                _achievementRepository.Delete(achievement);
-            }
+            var achievement = _achievementRepository.Get(a => a, a => a.Id == id);
+            if (achievement == null) return ServiceResult<Guid>.NotFound();
+            if (!CanManage(achievement, userId, isAdmin)) return ServiceResult<Guid>.Forbidden();
+
+            achievement.Name = form.Name?.Trim();
+            achievement.Description = form.Description?.Trim();
+            _achievementRepository.Update(achievement);
+            return ServiceResult<Guid>.Success(achievement.GameId, "Achievement saved.");
         }
 
-        public void UpdateAchievement(Achievement achievement)
+        public ServiceResult<Guid> Delete(Guid id, string userId, bool isAdmin)
         {
-            if (achievement == null) return;
-            if (achievement.Id == default)
-            {
-                achievement.Id = Guid.NewGuid();
-                _achievementRepository.Insert(achievement);
-            }
-            else
-                _achievementRepository.Update(achievement);
+            var achievement = _achievementRepository.Get(a => a, a => a.Id == id);
+            if (achievement == null) return ServiceResult<Guid>.NotFound();
+            if (!CanManage(achievement, userId, isAdmin)) return ServiceResult<Guid>.Forbidden();
+
+            _achievementRepository.Delete(achievement);
+            return ServiceResult<Guid>.Success(achievement.GameId, "Achievement deleted.");
         }
 
-        public Achievement GetAchievementById(Guid id) => _achievementRepository.Get(x => x, predicate: x => x.Id == id);
-
-        public List<Achievement> getAllAchievements()
+        private bool CanManage(Achievement achievement, string userId, bool isAdmin)
         {
-            return _achievementRepository.GetAll(x => x).ToList();
-        }
-
-        public List<Achievement> getAllAchievementsByGamer(string gamerid)
-        {
-            var gaIds = _gamerAchievementRepository.GetAll(x => x, predicate: x => x.GamerId == gamerid)
-                .Select(x => x.AchievementId)
-                .Where(id => id.HasValue)
-                .Select(id => id.Value)
-                .ToList();
-
-            if (!gaIds.Any()) return new List<Achievement>();
-
-            return _achievementRepository.GetAll(x => x, predicate: x => gaIds.Contains(x.Id)).ToList();
+            var game = _gameService.GetGameById(achievement.GameId);
+            return game != null && _gameService.CanManage(game, userId, isAdmin);
         }
     }
 }

@@ -1,76 +1,75 @@
-﻿using GamingPlatform.Domain.Models;
+﻿using GamingPlatform.Domain.DTO;
+using GamingPlatform.Domain.Identity;
+using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Interface;
 using GamingPlatform.Service.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 
 namespace GamingPlatform.Service.Implementations
 {
     public class WishlistService : IWishlistService
     {
         private readonly IRepository<Wishlist> _wishlistRepository;
+        private readonly IRepository<Library> _libraryRepository;
         private readonly IGameService _gameService;
+        private readonly IFriendService _friendService;
+        private readonly UserManager<GamingPlatformUser> _userManager;
 
-        public WishlistService(IRepository<Wishlist> wishlistRepository, IGameService gameService)
+        public WishlistService(
+            IRepository<Wishlist> wishlistRepository,
+            IRepository<Library> libraryRepository,
+            IGameService gameService,
+            IFriendService friendService,
+            UserManager<GamingPlatformUser> userManager)
         {
             _wishlistRepository = wishlistRepository;
+            _libraryRepository = libraryRepository;
             _gameService = gameService;
+            _friendService = friendService;
+            _userManager = userManager;
         }
 
-        public void AddGameToWishlist(string gamerid, Guid gameId)
+        public List<GameDto> GetMyWishlist(string userId) =>
+            _gameService.GetByIds(GameIds(userId), userId, includeDelisted: false);
+
+        public ServiceResult<WishlistDto> GetWishlist(string ownerId, string viewerId)
         {
-            Wishlist wishlist = GetWishlist(gamerid, gameId);
-            if (wishlist != null)
+            var owner = _userManager.Users.FirstOrDefault(u => u.Id == ownerId);
+            // A block hides the user completely, like an account that doesn't exist
+            if (owner == null || _friendService.IsBlockedEitherWay(ownerId, viewerId))
+                return ServiceResult<WishlistDto>.NotFound();
+
+            var dto = new WishlistDto
             {
-                throw new Exception("Game is already in the wishlist.");
-            }
-            var wishlistEntry = new Wishlist
-            {
-                GamerId = gamerid,
-                GameId = gameId,
+                OwnerName = owner.UserName ?? "Unknown",
+                IsVisible = _friendService.CanViewWishlist(owner, viewerId)
             };
-
-            _wishlistRepository.Insert(wishlistEntry);
+            if (dto.IsVisible)
+                dto.Games = _gameService.GetByIds(GameIds(ownerId), viewerId, includeDelisted: false);
+            return ServiceResult<WishlistDto>.Success(dto);
         }
 
-        public void DeleteGameFromWishlist(string gamerid, Guid gameId)
+        public ServiceResult Add(string userId, Guid gameId)
         {
-            Wishlist wishlist = GetWishlist(gamerid, gameId);
-            if (wishlist == null)
-            {
-                throw new Exception("No such game.");
-            }
-            _wishlistRepository.Delete(wishlist);
+            var game = _gameService.GetGameById(gameId);
+            if (game == null || game.IsDelisted) return ServiceResult.NotFound();
+
+            if (_libraryRepository.Any(l => l.GamerId == userId && l.GameId == gameId))
+                return ServiceResult.Invalid("You already own this game.");
+
+            // Adding twice is harmless: the unique (GamerId, GameId) index keeps one row
+            _wishlistRepository.TryInsert(new Wishlist { GamerId = userId, GameId = gameId });
+            return ServiceResult.Ok("Added to your wishlist.");
         }
 
-        public List<Game> GetAllGamesFromWishlist(string gamerid)
+        public ServiceResult Remove(string userId, Guid gameId)
         {
-            var gameIds = _wishlistRepository
-                .GetAll(w => w, w => w.GamerId == gamerid) // Fix: use repository's predicate parameter
-                .Select(w => w.GameId.Value) // GameId is nullable, so use .Value
-                .ToList();
-
-            // Fetch all games in one call
-            return _gameService.GetGamesByIds(gameIds);
+            var entry = _wishlistRepository.Get(w => w, w => w.GamerId == userId && w.GameId == gameId);
+            if (entry != null) _wishlistRepository.Delete(entry);
+            return ServiceResult.Ok("Removed from your wishlist.");
         }
 
-        public Wishlist GetWishlist(string gamerid, Guid gameId)
-        {
-            return _wishlistRepository.Get(
-                selector: w => w,
-                predicate: w => w.GamerId == gamerid && w.GameId == gameId
-            );
-
-        }
-        public bool IsGameInWishlist(string userId, Guid gameId)
-        {
-            return _wishlistRepository.GetAll(
-                selector: x => x,
-                predicate: l => l.GamerId == userId && l.GameId == gameId
-            ).Any();
-        }
+        private List<Guid> GameIds(string userId) =>
+            _wishlistRepository.GetAll(w => w.GameId!.Value, w => w.GamerId == userId && w.GameId != null);
     }
 }

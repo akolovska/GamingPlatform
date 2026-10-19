@@ -1,4 +1,5 @@
-﻿using GamingPlatform.Domain.Models;
+﻿using GamingPlatform.Domain.DTO;
+using GamingPlatform.Domain.Models;
 using GamingPlatform.Repository.Interface;
 using GamingPlatform.Service.Interfaces;
 
@@ -15,47 +16,33 @@ namespace GamingPlatform.Service.Implementations
             _gameGenreRepository = gameGenreRepository;
         }
 
-        public List<Genre> GetAll() =>
-            _genreRepository.GetAll(g => g)
-                .OrderBy(g => g.Name)
-                .ToList();
+        public List<GenreDto> GetAll() =>
+            _genreRepository.GetAll(
+                selector: g => new GenreDto { Id = g.Id, Name = g.Name, GameCount = g.GameGenres.Count },
+                orderBy: q => q.OrderBy(g => g.Name));
 
-        public Genre? GetById(Guid id) =>
-            _genreRepository.Get(selector: g => g, predicate: g => g.Id == id);
-
-        public bool NameExists(string name, Guid? exceptId = null)
+        public ServiceResult Add(string name)
         {
-            var normalized = name.Trim().ToLower();
+            name = name?.Trim() ?? string.Empty;
+            if (name.Length is 0 or > 50) return ServiceResult.Invalid("Enter a genre name (max 50 characters).");
 
-            return _genreRepository.GetAll(g => g)
-                .Any(g => g.Name.ToLower() == normalized &&
-                          (exceptId == null || g.Id != exceptId));
+            // The unique index on Name rejects duplicates (case-insensitively, with the default collation)
+            if (!_genreRepository.TryInsert(new Genre { Name = name }))
+                return ServiceResult.Invalid("That genre already exists.");
+
+            return ServiceResult.Ok($"Genre \"{name}\" added.");
         }
 
-        public bool IsInUse(Guid id) =>
-            _gameGenreRepository.GetAll(x => x)
-                .Any(x => x.GenreId == id);
-
-        public void Add(Genre genre)
+        public ServiceResult Delete(Guid id)
         {
-            genre.Name = genre.Name.Trim();
-            _genreRepository.Insert(genre);
-        }
+            var genre = _genreRepository.Get(selector: g => g, predicate: g => g.Id == id);
+            if (genre == null) return ServiceResult.NotFound();
 
-        public void Update(Genre genre)
-        {
-            genre.Name = genre.Name.Trim();
-            _genreRepository.Update(genre);
-        }
+            if (_gameGenreRepository.Any(x => x.GenreId == id))
+                return ServiceResult.Invalid("Games still use this genre, so it can't be deleted.");
 
-        public void Delete(Guid id)
-        {
-            // Safety net: never delete a genre that games still use
-            if (IsInUse(id)) return;
-
-            var genre = GetById(id);
-            if (genre != null)
-                _genreRepository.Delete(genre);
+            _genreRepository.Delete(genre);
+            return ServiceResult.Ok($"Genre \"{genre.Name}\" deleted.");
         }
     }
 }

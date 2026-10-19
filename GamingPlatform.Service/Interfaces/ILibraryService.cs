@@ -1,22 +1,12 @@
-﻿using GamingPlatform.Domain.Models;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using GamingPlatform.Domain.DTO;
 
 namespace GamingPlatform.Service.Interfaces
 {
+    // Owned games. Buying them is IOrderService's job.
     public interface ILibraryService
     {
-        void DeleteGameFromLibrary(string gamerid, Guid gameId);
-        void AddGameToLibrary(string gamerid, Guid gameId);
-        Library GetLibrary(string gamerid);
-        List<Game> GetUserGames(string gamerid);
-        List<Library> GetAllLibraries();
-        bool IsGameInLibrary(string userId, Guid gameId);
-        Game GetGameFromLibrary(string userId, Guid gameId);
-
+        // ownerId's games; InWishlist/InLibrary are filled for viewerId
+        List<GameDto> GetLibrary(string ownerId, string viewerId);
+        GameDto? GetOwnedGame(string userId, Guid gameId);
     }
 }

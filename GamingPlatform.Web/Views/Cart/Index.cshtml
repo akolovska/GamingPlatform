@@ -1,0 +1,67 @@
+@model GamingPlatform.Domain.DTO.CartDto
+@{
+    ViewData["Title"] = "Cart";
+}
+
+<div class="page-header">
+    <h2>Your cart <small class="text-muted fs-6">@Model.Items.Count @(Model.Items.Count == 1 ? "game" : "games")</small></h2>
+    <a asp-controller="Games" asp-action="Index" class="btn btn-outline-secondary btn-sm">Continue shopping</a>
+</div>
+
+@if (!Model.Items.Any())
+{
+    <div class="empty-state">
+        <span class="icon">&#128722;</span>
+        Your cart is empty.
+        <div class="mt-3"><a asp-controller="Games" asp-action="Index" class="btn btn-primary btn-sm">Browse the store</a></div>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="list-group">
+                @foreach (var item in Model.Items)
+                {
+                    <div class="list-group-item d-flex align-items-center gap-3">
+                        @if (!string.IsNullOrEmpty(item.CoverImageUrl))
+                        {
+                            <img src="@item.CoverImageUrl" alt="" style="width:96px;aspect-ratio:16/10;object-fit:cover;border-radius:6px" />
+                        }
+                        <div class="flex-grow-1">
+                            <a asp-controller="Games" asp-action="Details" asp-route-id="@item.GameId" class="fw-semibold text-white">@item.Title</a>
+                            @if (item.IsComingSoon)
+                            {
+                                <div class="small" style="color:var(--warning)">Pre-order</div>
+                            }
+                        </div>
+                        <div class="text-end">
+                            @if (item.DiscountPercent > 0)
+                            {
+                                <span class="discount-badge">-@item.DiscountPercent%</span>
+                                <div class="price-old">$@item.FullPrice?.ToString("0.00")</div>
+                            }
+                            <div class="fw-bold">@(item.Price == 0 ? "Free" : $"${item.Price:0.00}")</div>
+                        </div>
+                        <form asp-action="Remove" method="post">
+                            <input type="hidden" name="gameId" value="@item.GameId" />
+                            <button type="submit" class="btn btn-outline-secondary btn-sm" aria-label="Remove @item.Title">&times;</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="panel">
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Total</span>
+                    <span class="fs-4 fw-bold text-white">$@Model.Total.ToString("0.00")</span>
+                </div>
+                <form asp-controller="Orders" asp-action="CheckoutCart" method="post" data-confirm="Buy @Model.Items.Count @(Model.Items.Count == 1 ? "game" : "games") for $@Model.Total.ToString("0.00")?">
+                    <button type="submit" class="btn btn-primary w-100">Checkout</button>
+                </form>
+                <div class="form-text">You pay with Stripe. Prices are fixed when you check out.</div>
+            </div>
+        </div>
+    </div>
+}

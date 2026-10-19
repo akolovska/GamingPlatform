@@ -20,12 +20,67 @@ namespace GamingPlatform.Repository.Data
         public virtual DbSet<Achievement> Achievements { get; set; }
         public virtual DbSet<Friend> Friends { get; set; }
         public virtual DbSet<Review> Reviews { get; set; }
-        public virtual DbSet<GamerAchievement> GamerAchievements { get; set; }
         public virtual DbSet<Genre> Genres { get; set; }
         public virtual DbSet<GameGenre> GameGenres { get; set; }
+        public virtual DbSet<Order> Orders { get; set; }
+        public virtual DbSet<OrderItem> OrderItems { get; set; }
+        public virtual DbSet<CartItem> CartItems { get; set; }
+        public virtual DbSet<Notification> Notifications { get; set; }
+        public virtual DbSet<ReviewVote> ReviewVotes { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Orders are kept forever, so BuyerId/RecipientId have no foreign key to AspNetUsers:
+            // deleting an account must not delete (or be blocked by) its purchase records.
+            modelBuilder.Entity<Order>(e =>
+            {
+                e.Property(o => o.Total).HasPrecision(18, 2);
+                // Fulfilling an order checks the status it was read with, so the success page and the
+                // webhook can't both fulfil the same order (the second save fails and is ignored)
+                e.Property(o => o.Status).IsConcurrencyToken();
+                e.HasIndex(o => o.BuyerId);
+                e.HasIndex(o => o.StripeSessionId).IsUnique().HasFilter("[StripeSessionId] IS NOT NULL");
+                e.HasIndex(o => o.PaymentIntentId);
+            });
+
+            modelBuilder.Entity<OrderItem>(e =>
+            {
+                e.Property(i => i.Price).HasPrecision(18, 2);
+                e.HasOne(i => i.Order).WithMany(o => o.Items)
+                 .HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(i => i.Game).WithMany()
+                 .HasForeignKey(i => i.GameId).OnDelete(DeleteBehavior.Restrict); // a sold game's records stay
+                e.HasIndex(i => i.RecipientId);
+            });
+
+            modelBuilder.Entity<CartItem>(e =>
+            {
+                e.HasOne<GamingPlatformUser>().WithMany()
+                 .HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(c => c.Game).WithMany()
+                 .HasForeignKey(c => c.GameId).OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(c => new { c.UserId, c.GameId }).IsUnique();
+            });
+
+            modelBuilder.Entity<Notification>(e =>
+            {
+                e.HasOne<GamingPlatformUser>().WithMany()
+                 .HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(n => new { n.UserId, n.IsRead });
+            });
+
+            // No foreign key on UserId: users -> reviews (SET NULL) -> votes would be a second
+            // cascade path, which SQL Server refuses. AccountService deletes a user's votes instead.
+            modelBuilder.Entity<ReviewVote>(e =>
+            {
+                e.HasOne<Review>().WithMany()
+                 .HasForeignKey(v => v.ReviewId).OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(v => new { v.ReviewId, v.UserId }).IsUnique();
+                e.HasIndex(v => v.UserId);
+            });
+
             modelBuilder.Entity<Dev>(e =>
             {
                 e.HasOne(d => d.User)

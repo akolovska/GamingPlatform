@@ -1,0 +1,50 @@
+@model List<GamingPlatform.Domain.DTO.OrderDto>
+@using GamingPlatform.Domain.Enum
+@{
+    ViewData["Title"] = "Purchase history";
+}
+
+<div class="page-header">
+    <h2>Purchase history</h2>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="empty-state"><span class="icon">&#129534;</span>You haven't bought anything yet.</div>
+}
+else
+{
+    foreach (var order in Model)
+    {
+        <div class="panel mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <div>
+                    <span class="fw-semibold text-white">@order.CreatedAt.ToLocalTime().ToString("MMMM d, yyyy")</span>
+                    <span class="text-muted small ms-2">Order @order.Id.ToString()[..8].ToUpperInvariant()</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    @if (order.Status == OrderStatus.Refunded)
+                    {
+                        <span class="badge-pill" style="color:var(--warning)">Refunded</span>
+                    }
+                    <span class="fw-bold text-white">@(order.Total == 0 ? "Free" : $"${order.Total:0.00}")</span>
+                </div>
+            </div>
+            <ul class="list-unstyled mb-0">
+                @foreach (var item in order.Items)
+                {
+                    <li class="d-flex justify-content-between small py-1">
+                        <span>
+                            <a asp-controller="Games" asp-action="Details" asp-route-id="@item.GameId">@item.GameTitle</a>
+                            @if (item.GiftedTo != null)
+                            {
+                                <span class="text-muted">&middot; &#127873; gift for @item.GiftedTo</span>
+                            }
+                        </span>
+                        <span class="text-muted">@(item.Price == 0 ? "Free" : $"${item.Price:0.00}")</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+}

@@ -1,29 +1,25 @@
-@model GamingPlatform.Domain.DTO.GameDto
+@model GamingPlatform.Domain.DTO.GameDetailsDto
+@using GamingPlatform.Web.Helpers
 
 @{
     ViewData["Title"] = Model.Title;
     bool isLoggedIn = User.Identity?.IsAuthenticated == true;
-    bool isDelisted = ViewBag.IsDelisted == true;
     var loginUrl = Url.Page("/Account/Login", new { area = "Identity", returnUrl = Context.Request.Path });
-    bool free = (Model.Price ?? 0) == 0;
-    int reviewCount = Model.Reviews?.Count ?? 0;
-    int achCount = Model.Achievements?.Count ?? 0;
-    int filled = (int)Math.Round(Model.Rating ?? 0);
-    var genreNames = Model.GameGenres.Where(x => x.Genre != null).Select(x => x.Genre!.Name).OrderBy(n => n).ToList();
-    bool canManageGame = ViewBag.CanEdit == true;
-    bool canReview = ViewBag.CanReview == true;
+    var card = GameCardModel.From(Model);
+    string reviewSort = ViewBag.ReviewSort as string ?? "helpful";
+    string buyLabel = Model.IsFree ? "Add to Library" : Model.IsComingSoon ? "Pre-order" : "Buy Now";
 }
 
 <nav aria-label="breadcrumb" class="mb-3 small">
     <a asp-action="Index">Store</a>
-    @if (genreNames.Any())
+    @if (Model.Genres.Any())
     {
-        <span class="text-muted"> / @string.Join(", ", genreNames)</span>
+        <span class="text-muted"> / @string.Join(", ", Model.Genres)</span>
     }
     <span class="text-muted"> / @Model.Title</span>
 </nav>
 
-@if (isDelisted)
+@if (Model.IsDelisted)
 {
     <div class="alert alert-warning">This game is no longer available in the store.</div>
 }
@@ -42,43 +38,67 @@
             }
         </div>
 
-        <div class="buy-box mt-3">
-            <div>
-                <div class="price">@(free ? "Free to Play" : $"${Model.Price:0.00}")</div>
-                @if (Model.Rating != null)
+        <div class="buy-box mt-3 flex-column align-items-stretch gap-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2"><partial name="_Price" model="card" /></div>
+                @if (Model.ReviewCount > 0)
                 {
-                    <div class="small">
-                        <span class="stars">@(new string('★', filled))<span class="off">@(new string('★', 5 - filled))</span></span>
-                        <span class="text-muted ms-1">@Model.Rating.Value.ToString("0.0") (@reviewCount)</span>
+                    <div class="small text-end">
+                        <span class="review-summary @card.ReviewTone">@Model.ReviewSummary</span>
+                        <span class="text-muted">(@Model.PositivePercent% of @Model.ReviewCount)</span>
                     </div>
                 }
             </div>
 
+            @if (Model.IsOnSale && Model.DiscountEndsAt != null)
+            {
+                <div class="small text-muted">Sale ends @Model.DiscountEndsAt.Value.AddDays(-1).ToString("MMMM d").</div>
+            }
+            @if (Model.IsComingSoon)
+            {
+                <div class="small" style="color:var(--warning)">Coming @(Model.ReleaseDate?.ToString("MMMM d, yyyy")). Pre-order now and it's in your library on release day.</div>
+            }
+
             <div class="d-flex flex-wrap gap-2">
                 @if (!isLoggedIn)
                 {
-                    if (!isDelisted)
+                    if (!Model.IsDelisted)
                     {
                         <a href="@loginUrl" class="btn btn-primary">Log in to buy</a>
                     }
                 }
                 else if (Model.InLibrary)
                 {
-                    <button class="btn btn-secondary" disabled>&#10003; In your library</button>
+                    <a asp-controller="Libraries" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">&#10003; In your library</a>
                 }
-                else if (!isDelisted)
+                else if (!Model.IsDelisted)
                 {
-                    <form asp-controller="Libraries" asp-action="BuyGame" method="post"
-                          data-confirm="@(free ? $"Add {Model.Title} to your library?" : $"Buy {Model.Title} for ${Model.Price:0.00}?")">
+                    <form asp-controller="Orders" asp-action="BuyNow" method="post"
+                          data-confirm="@(Model.IsFree ? $"Add {Model.Title} to your library?" : $"{buyLabel} {Model.Title} for ${Model.CurrentPrice:0.00}?")">
                         <input type="hidden" name="gameId" value="@Model.Id" />
-                        <button type="submit" class="btn btn-primary">@(free ? "Add to Library" : "Buy Now")</button>
+                        <button type="submit" class="btn btn-primary">@buyLabel</button>
                     </form>
+
+                    @if (!Model.IsFree)
+                    {
+                        @if (Model.InCart)
+                        {
+                            <a asp-controller="Cart" asp-action="Index" class="btn btn-outline-secondary">&#128722; In cart</a>
+                        }
+                        else
+                        {
+                            <form asp-controller="Cart" asp-action="Add" method="post">
+                                <input type="hidden" name="gameId" value="@Model.Id" />
+                                <button type="submit" class="btn btn-outline-secondary">&#128722; Add to cart</button>
+                            </form>
+                        }
+                    }
 
                     @if (Model.InWishlist)
                     {
                         <form asp-controller="Wishlists" asp-action="RemoveFromWishlist" method="post">
                             <input type="hidden" name="gameId" value="@Model.Id" />
-                            <button type="submit" class="btn btn-outline-secondary">&#9829; Remove from wishlist</button>
+                            <button type="submit" class="btn btn-outline-secondary">&#9829; Wishlisted</button>
                         </form>
                     }
                     else
@@ -89,19 +109,43 @@
                         </form>
                     }
                 }
+
+                @if (isLoggedIn && !Model.IsDelisted && Model.GiftableFriends.Any())
+                {
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#gift-box">&#127873; Gift</button>
+                }
             </div>
+
+            @if (isLoggedIn && !Model.IsDelisted && Model.GiftableFriends.Any())
+            {
+                <div class="collapse" id="gift-box">
+                    <form asp-controller="Orders" asp-action="Gift" method="post" class="d-flex gap-2"
+                          data-confirm="Send @Model.Title as a gift@(Model.IsFree ? "" : $" for ${Model.CurrentPrice:0.00}")?">
+                        <input type="hidden" name="gameId" value="@Model.Id" />
+                        <select name="friendId" class="form-select form-select-sm" required aria-label="Friend to gift to">
+                            <option value="">Choose a friend...</option>
+                            @foreach (var friend in Model.GiftableFriends)
+                            {
+                                <option value="@friend.Id">@friend.UserName</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-primary btn-sm text-nowrap">Send gift</button>
+                    </form>
+                    <div class="form-text">Only friends who don't own it yet are listed. They get it straight away.</div>
+                </div>
+            }
         </div>
 
-        @if (ViewBag.CanEdit == true)
+        @if (Model.CanManage)
         {
             <div class="panel mt-3 d-flex gap-2 align-items-center">
                 <span class="text-muted small me-auto">Manage this game</span>
                 <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">Edit</a>
                 <form asp-action="SetListed" method="post"
-                      data-confirm="@(isDelisted ? "Relist this game in the store?" : "Remove this game from the store? Owners keep it.")">
+                      data-confirm="@(Model.IsDelisted ? "Relist this game in the store?" : "Remove this game from the store? Owners keep it.")">
                     <input type="hidden" name="id" value="@Model.Id" />
-                    <input type="hidden" name="listed" value="@(isDelisted ? "true" : "false")" />
-                    <button type="submit" class="btn btn-outline-danger btn-sm">@(isDelisted ? "Relist" : "Delist")</button>
+                    <input type="hidden" name="listed" value="@(Model.IsDelisted ? "true" : "false")" />
+                    <button type="submit" class="btn btn-outline-danger btn-sm">@(Model.IsDelisted ? "Relist" : "Delist")</button>
                 </form>
             </div>
         }
@@ -111,7 +155,7 @@
     <div class="col-lg-7">
         <h1 class="fw-bold mb-2">@Model.Title</h1>
         <div class="d-flex flex-wrap gap-2 mb-3">
-            @foreach (var g in genreNames)
+            @foreach (var g in Model.Genres)
             {
                 <span class="badge-pill">@g</span>
             }
@@ -121,14 +165,29 @@
             }
             @if (Model.ReleaseDate != null)
             {
-                <span class="badge-pill">Released @Model.ReleaseDate.Value.ToString("MMM d, yyyy")</span>
+                <span class="badge-pill">@(Model.IsComingSoon ? "Coming" : "Released") @Model.ReleaseDate.Value.ToString("MMM d, yyyy")</span>
             }
         </div>
 
+        @if (Model.TrailerEmbedUrl != null)
+        {
+            <iframe class="trailer mb-3" src="@Model.TrailerEmbedUrl" title="@Model.Title trailer" loading="lazy"
+                    allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        }
+        @if (Model.Screenshots.Any())
+        {
+            <div class="gallery mb-3">
+                @foreach (var shot in Model.Screenshots)
+                {
+                    <a href="@shot" target="_blank" rel="noopener"><img src="@shot" alt="Screenshot of @Model.Title" loading="lazy" /></a>
+                }
+            </div>
+        }
+
         <ul class="nav nav-pills nav-pills-dark mb-3" role="tablist">
             <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-about" type="button">About</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-ach" type="button">Achievements <span class="badge-pill">@achCount</span></button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-rev" type="button">Reviews <span class="badge-pill">@reviewCount</span></button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-ach" type="button">Achievements <span class="badge-pill">@Model.Achievements.Count</span></button></li>
+            <li class="nav-item"><button class="nav-link" id="reviews-tab" data-bs-toggle="pill" data-bs-target="#tab-rev" type="button">Reviews <span class="badge-pill">@Model.ReviewCount</span></button></li>
         </ul>
 
         <div class="tab-content">
@@ -139,12 +198,12 @@
                     <div class="col-md-6">
                         <div class="panel h-100">
                             <h6 class="text-uppercase small text-muted">Developers</h6>
-                            @if (Model.Developers != null && Model.Developers.Any())
+                            @if (Model.Developers.Any())
                             {
                                 <div class="d-flex flex-wrap gap-2">
                                     @foreach (var dev in Model.Developers)
                                     {
-                                        <span class="badge-pill">@dev.Name</span>
+                                        <a asp-controller="Studios" asp-action="Details" asp-route-id="@dev.Id" class="badge-pill">@dev.Name</a>
                                     }
                                 </div>
                             }
@@ -171,7 +230,7 @@
             </div>
 
             <div class="tab-pane fade" id="tab-ach">
-                @if (Model.Achievements != null && Model.Achievements.Any())
+                @if (Model.Achievements.Any())
                 {
                     foreach (var achievement in Model.Achievements)
                     {
@@ -194,7 +253,24 @@
             </div>
 
             <div class="tab-pane fade" id="tab-rev">
-                @if (canReview)
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div>
+                        <span class="review-summary @card.ReviewTone">@Model.ReviewSummary</span>
+                        @if (Model.ReviewCount > 0)
+                        {
+                            <span class="text-muted small">&middot; @Model.PositivePercent% of @Model.ReviewCount reviews rate it 4 or 5 stars</span>
+                        }
+                    </div>
+                    @if (Model.Reviews.Count > 1)
+                    {
+                        <div class="small">
+                            <a asp-route-id="@Model.Id" asp-route-reviews="helpful" asp-fragment="tab-rev" class="@(reviewSort == "helpful" ? "fw-bold" : "")">Most helpful</a> &middot;
+                            <a asp-route-id="@Model.Id" asp-route-reviews="newest" asp-fragment="tab-rev" class="@(reviewSort == "newest" ? "fw-bold" : "")">Newest</a>
+                        </div>
+                    }
+                </div>
+
+                @if (Model.CanReview)
                 {
                     <button type="button" class="btn btn-outline-secondary btn-sm mb-3" data-bs-toggle="collapse" data-bs-target="#add-review">
                         Write a review
@@ -220,28 +296,30 @@
                         </form>
                     </div>
                 }
-
-                @if (Model.Reviews != null && Model.Reviews.Any())
+                else if (Model.InLibrary && Model.IsComingSoon)
                 {
-                    foreach (var review in Model.Reviews.OrderByDescending(r => r.DateRated))
+                    <p class="text-muted small">You can review this game once it's released.</p>
+                }
+
+                @if (Model.Reviews.Any())
+                {
+                    foreach (var review in Model.Reviews)
                     {
-                        int s = (int)Math.Round((double)review.Score);
-                        // Author, or Admin/Dev who manages this game. The controller re-checks on POST.
-                        bool canEditReview = review.IsMine || canManageGame;
-                        <div class="review">
+                        <div class="review" id="review-@review.Id">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div class="d-flex gap-2 align-items-center">
                                     <strong>@review.GamerName</strong>
-                                    <span class="stars">@(new string('★', s))<span class="off">@(new string('★', Math.Max(0, 5 - s)))</span></span>
+                                    <span class="stars">@(new string('★', review.Score))<span class="off">@(new string('★', Math.Max(0, 5 - review.Score)))</span></span>
                                 </div>
                                 <div class="d-flex gap-2 align-items-center">
                                     <small class="text-muted">@review.DateRated?.ToString("MMM d, yyyy")</small>
-                                    @if (canEditReview)
+                                    @* The server checks these again: only the author edits, the author or an admin deletes *@
+                                    @if (review.IsMine)
                                     {
                                         <button type="button" class="btn btn-outline-secondary btn-sm"
                                                 data-bs-toggle="collapse" data-bs-target="#edit-review-@review.Id">Edit</button>
                                     }
-                                    @if (canManageGame)
+                                    @if (review.CanDelete)
                                     {
                                         <form asp-controller="Reviews" asp-action="Delete" asp-route-id="@review.Id" method="post"
                                               data-confirm="Delete this review?">
@@ -252,13 +330,37 @@
                             </div>
                             @if (!string.IsNullOrEmpty(review.Comment))
                             {
-                                <div class="mt-1">@review.Comment</div>
+                                <div class="mt-1" style="white-space:pre-line">@review.Comment</div>
                             }
 
-                            @if (canEditReview)
+                            <div class="d-flex align-items-center gap-2 mt-2 small text-muted">
+                                @if (review.CanVote)
+                                {
+                                    <span>Helpful?</span>
+                                    @foreach (var (helpful, label, count) in new[] { (true, "👍", review.Upvotes), (false, "👎", review.Downvotes) })
+                                    {
+                                        <form asp-controller="Reviews" asp-action="Vote" asp-route-id="@review.Id" method="post">
+                                            <input type="hidden" name="helpful" value="@(helpful ? "true" : "false")" />
+                                            <input type="hidden" name="gameId" value="@Model.Id" />
+                                            <input type="hidden" name="reviews" value="@reviewSort" />
+                                            <button type="submit" class="vote-btn @(review.MyVote == helpful ? "active" : "")" data-no-loading
+                                                    aria-label="@(helpful ? "Helpful" : "Not helpful")@(review.MyVote == helpful ? " (your vote, click to undo)" : "")">
+                                                @label @count
+                                            </button>
+                                        </form>
+                                    }
+                                }
+                                else if (review.Upvotes + review.Downvotes > 0)
+                                {
+                                    <span>&#128077; @review.Upvotes &middot; &#128078; @review.Downvotes</span>
+                                }
+                            </div>
+
+                            @if (review.IsMine)
                             {
                                 <div class="collapse mt-2" id="edit-review-@review.Id">
                                     <form asp-controller="Reviews" asp-action="Edit" asp-route-id="@review.Id" method="post">
+                                        <input type="hidden" name="gameId" value="@Model.Id" />
                                         <div class="d-flex gap-2 mb-2">
                                             <select name="Score" class="form-select form-select-sm w-auto" required>
                                                 @for (int i = 5; i >= 1; i--)
@@ -283,3 +385,14 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Links to #tab-rev or #review-... open the Reviews tab
+        if (location.hash.startsWith('#review-') || location.hash === '#tab-rev') {
+            bootstrap.Tab.getOrCreateInstance(document.getElementById('reviews-tab')).show();
+            var target = document.querySelector(location.hash);
+            if (target) setTimeout(function () { target.scrollIntoView({ block: 'center' }); }, 200);
+        }
+    </script>
+}

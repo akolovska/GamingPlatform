@@ -1,14 +1,18 @@
 ﻿using GamingPlatform.Domain.DTO;
-using GamingPlatform.Domain.Models;
 
 namespace GamingPlatform.Service.Interfaces
 {
+    // Only owners can review, once per game, after release. Only the author can edit a review;
+    // the author or an Admin can delete it. Devs can't touch reviews of their games.
     public interface IReviewService
     {
-        Review? GetReviewById(Guid id);
-        Review? GetUserReviewForGame(string gamerId, Guid gameId);
-        void AddReview(string gamerId, Guid gameId, ReviewFormDto dto);
-        void UpdateReview(Review review, ReviewFormDto dto);
-        void DeleteReview(Review review);
+        ServiceResult Add(string userId, Guid gameId, ReviewFormDto dto);
+
+        // Value = the game id, so the caller can go back to the game
+        ServiceResult<Guid> Update(Guid reviewId, string userId, ReviewFormDto dto);
+        ServiceResult<Guid> Delete(Guid reviewId, string userId, bool isAdmin);
+
+        // Up/down vote. Voting the same way again removes the vote. Not on your own review.
+        ServiceResult<Guid> Vote(Guid reviewId, string userId, bool helpful);
     }
 }

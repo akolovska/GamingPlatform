@@ -1,0 +1,67 @@
+@page
+@model ExternalLoginModel
+@using GamingPlatform.Domain.Validation
+@{
+    ViewData["Title"] = "Finish signing up";
+    var minDate = MinimumAgeAttribute.EarliestBirthDate.ToString("yyyy-MM-dd");
+    var maxDate = MinimumAgeAttribute.LatestBirthDate(18).ToString("yyyy-MM-dd");
+}
+
+<div class="auth-wrap wide">
+    <div class="auth-card">
+        <h2 class="mb-1">Almost there</h2>
+        <p class="text-muted mb-4">You signed in with @Model.ProviderDisplayName. Pick a username and confirm a few details to create your account. You must be at least 18.</p>
+
+        <form asp-page-handler="Confirmation" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input asp-for="Input.FirstName" class="form-control" autocomplete="given-name" placeholder="First name" />
+                        <label asp-for="Input.FirstName"></label>
+                    </div>
+                    <span asp-validation-for="Input.FirstName" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input asp-for="Input.LastName" class="form-control" autocomplete="family-name" placeholder="Last name" />
+                        <label asp-for="Input.LastName"></label>
+                    </div>
+                    <span asp-validation-for="Input.LastName" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input asp-for="Input.Username" class="form-control" autocomplete="username" placeholder="Username" />
+                        <label asp-for="Input.Username"></label>
+                    </div>
+                    <span asp-validation-for="Input.Username" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input asp-for="Input.DateOfBirth" type="date" class="form-control" placeholder="Date of birth"
+                               autocomplete="bday" min="@minDate" max="@maxDate"
+                               data-msg-max="You must be at least 18 years old to create an account."
+                               data-msg-min="Please enter a valid date of birth." />
+                        <label asp-for="Input.DateOfBirth"></label>
+                    </div>
+                    <span asp-validation-for="Input.DateOfBirth" class="text-danger"></span>
+                </div>
+                <div class="col-12">
+                    <div class="form-floating">
+                        <input asp-for="Input.Email" class="form-control" autocomplete="email" placeholder="name@example.com" />
+                        <label asp-for="Input.Email"></label>
+                    </div>
+                    <div class="form-text">Keep your Google address and it's already confirmed. A different one needs confirming by email.</div>
+                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                </div>
+            </div>
+
+            <button type="submit" class="w-100 btn btn-lg btn-primary mt-4">Create account</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

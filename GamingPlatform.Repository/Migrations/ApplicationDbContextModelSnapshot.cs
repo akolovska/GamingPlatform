@@ -89,6 +89,9 @@ namespace GamingPlatform.Repository.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<bool>("WishlistSaleEmails")
+                        .HasColumnType("bit");
+
                     b.Property<int>("WishlistVisibility")
                         .HasColumnType("int");
 
@@ -125,6 +128,32 @@ namespace GamingPlatform.Repository.Migrations
                     b.HasIndex("GameId");
 
                     b.ToTable("Achievements");
+                });
+
+            modelBuilder.Entity("GamingPlatform.Domain.Models.CartItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameId");
+
+                    b.HasIndex("UserId", "GameId")
+                        .IsUnique();
+
+                    b.ToTable("CartItems");
                 });
 
             modelBuilder.Entity("GamingPlatform.Domain.Models.Dev", b =>
@@ -190,6 +219,15 @@ namespace GamingPlatform.Repository.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("DiscountEndsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DiscountPercent")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DiscountStartsAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<bool>("IsDelisted")
                         .HasColumnType("bit");
 
@@ -203,10 +241,20 @@ namespace GamingPlatform.Repository.Migrations
                     b.Property<DateTime?>("ReleaseDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("SaleAnnouncedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Screenshots")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("SystemRequirements")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Title")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TrailerUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -257,28 +305,6 @@ namespace GamingPlatform.Repository.Migrations
                     b.ToTable("GameGenres");
                 });
 
-            modelBuilder.Entity("GamingPlatform.Domain.Models.GamerAchievement", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("AchievementId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DateUnlocked")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("GamerId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AchievementId");
-
-                    b.ToTable("GamerAchievements");
-                });
-
             modelBuilder.Entity("GamingPlatform.Domain.Models.Genre", b =>
                 {
                     b.Property<Guid>("Id")
@@ -326,6 +352,110 @@ namespace GamingPlatform.Repository.Migrations
                     b.ToTable("Libraries");
                 });
 
+            modelBuilder.Entity("GamingPlatform.Domain.Models.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Url")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsRead");
+
+                    b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("GamingPlatform.Domain.Models.Order", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BuyerId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentIntentId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Status")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("StripeSessionId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BuyerId");
+
+                    b.HasIndex("PaymentIntentId");
+
+                    b.HasIndex("StripeSessionId")
+                        .IsUnique()
+                        .HasFilter("[StripeSessionId] IS NOT NULL");
+
+                    b.ToTable("Orders");
+                });
+
+            modelBuilder.Entity("GamingPlatform.Domain.Models.OrderItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("GameTitle")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("RecipientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("RecipientId");
+
+                    b.ToTable("OrderItems");
+                });
+
             modelBuilder.Entity("GamingPlatform.Domain.Models.Review", b =>
                 {
                     b.Property<Guid>("Id")
@@ -356,6 +486,32 @@ namespace GamingPlatform.Repository.Migrations
                         .HasFilter("[GamerId] IS NOT NULL AND [GameId] IS NOT NULL");
 
                     b.ToTable("Reviews");
+                });
+
+            modelBuilder.Entity("GamingPlatform.Domain.Models.ReviewVote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsHelpful")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("ReviewId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ReviewId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ReviewVotes");
                 });
 
             modelBuilder.Entity("GamingPlatform.Domain.Models.Wishlist", b =>
@@ -523,6 +679,23 @@ namespace GamingPlatform.Repository.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("GamingPlatform.Domain.Models.CartItem", b =>
+                {
+                    b.HasOne("GamingPlatform.Domain.Models.Game", "Game")
+                        .WithMany()
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Game");
+                });
+
             modelBuilder.Entity("GamingPlatform.Domain.Models.Dev", b =>
                 {
                     b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", "User")
@@ -586,13 +759,6 @@ namespace GamingPlatform.Repository.Migrations
                     b.Navigation("Genre");
                 });
 
-            modelBuilder.Entity("GamingPlatform.Domain.Models.GamerAchievement", b =>
-                {
-                    b.HasOne("GamingPlatform.Domain.Models.Achievement", null)
-                        .WithMany("GamerAchievements")
-                        .HasForeignKey("AchievementId");
-                });
-
             modelBuilder.Entity("GamingPlatform.Domain.Models.Library", b =>
                 {
                     b.HasOne("GamingPlatform.Domain.Models.Game", "Game")
@@ -610,6 +776,34 @@ namespace GamingPlatform.Repository.Migrations
                     b.Navigation("Game");
                 });
 
+            modelBuilder.Entity("GamingPlatform.Domain.Models.Notification", b =>
+                {
+                    b.HasOne("GamingPlatform.Domain.Identity.GamingPlatformUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GamingPlatform.Domain.Models.OrderItem", b =>
+                {
+                    b.HasOne("GamingPlatform.Domain.Models.Game", "Game")
+                        .WithMany()
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GamingPlatform.Domain.Models.Order", "Order")
+                        .WithMany("Items")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Game");
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("GamingPlatform.Domain.Models.Review", b =>
                 {
                     b.HasOne("GamingPlatform.Domain.Models.Game", null)
@@ -620,6 +814,15 @@ namespace GamingPlatform.Repository.Migrations
                         .WithMany()
                         .HasForeignKey("GamerId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("GamingPlatform.Domain.Models.ReviewVote", b =>
+                {
+                    b.HasOne("GamingPlatform.Domain.Models.Review", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("GamingPlatform.Domain.Models.Wishlist", b =>
@@ -692,11 +895,6 @@ namespace GamingPlatform.Repository.Migrations
                     b.Navigation("FriendshipsSent");
                 });
 
-            modelBuilder.Entity("GamingPlatform.Domain.Models.Achievement", b =>
-                {
-                    b.Navigation("GamerAchievements");
-                });
-
             modelBuilder.Entity("GamingPlatform.Domain.Models.Dev", b =>
                 {
                     b.Navigation("GameDevs");
@@ -720,6 +918,11 @@ namespace GamingPlatform.Repository.Migrations
             modelBuilder.Entity("GamingPlatform.Domain.Models.Genre", b =>
                 {
                     b.Navigation("GameGenres");
+                });
+
+            modelBuilder.Entity("GamingPlatform.Domain.Models.Order", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,0 +1,28 @@
+@model List<GamingPlatform.Domain.DTO.NotificationDto>
+@{
+    ViewData["Title"] = "Notifications";
+}
+
+<div class="page-header">
+    <h2>Notifications</h2>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="empty-state"><span class="icon">&#128276;</span>Nothing yet. Friend requests, gifts and sales on your wishlist show up here.</div>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var n in Model)
+        {
+            @* Notification URLs are made by the app itself, never by users *@
+            <a href="@(n.Url ?? "#")" class="list-group-item list-group-item-action notification @(n.IsRead ? "" : "unread")">
+                <div class="d-flex justify-content-between gap-3">
+                    <span class="@(n.IsRead ? "" : "text-white fw-semibold")">@n.Message</span>
+                    <small class="text-muted text-nowrap">@n.CreatedAt.ToLocalTime().ToString("MMM d, HH:mm")</small>
+                </div>
+            </a>
+        }
+    </div>
+}

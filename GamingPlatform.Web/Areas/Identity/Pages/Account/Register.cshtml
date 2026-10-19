@@ -2,14 +2,15 @@
 @model RegisterModel
 @{
     ViewData["Title"] = "Register";
+    ViewData["ReturnUrl"] = Model.ReturnUrl;
 }
 
 <div class="auth-wrap wide">
     <div class="auth-card">
         <h2 class="mb-1">Create your account</h2>
-        <p class="text-muted mb-4">Join to buy games, build a wishlist and add friends.</p>
+        <p class="text-muted mb-4">Join to buy games, build a wishlist and add friends. You must be at least @RegisterModel.MinimumAge.</p>
 
-        <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post" enctype="multipart/form-data">
+        <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post">
             <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
             <div class="row g-3">
@@ -35,8 +36,12 @@
                     <span asp-validation-for="Input.Username" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
+                    @* min/max stop the date picker from offering dates under 18; the server checks again (MinimumAgeAttribute) *@
                     <div class="form-floating">
-                        <input asp-for="Input.DateOfBirth" class="form-control" aria-required="true" placeholder="Date of birth" type="date" />
+                        <input asp-for="Input.DateOfBirth" type="date" class="form-control" aria-required="true" placeholder="Date of birth"
+                               autocomplete="bday" min="@Model.MinBirthDate" max="@Model.MaxBirthDate"
+                               data-msg-max="You must be at least @RegisterModel.MinimumAge years old to create an account."
+                               data-msg-min="Please enter a valid date of birth." />
                         <label asp-for="Input.DateOfBirth">Date of birth</label>
                     </div>
                     <span asp-validation-for="Input.DateOfBirth" class="text-danger"></span>
@@ -50,7 +55,7 @@
                 </div>
                 <div class="col-12">
                     <div class="form-floating">
-                        <input asp-for="Input.Bio" class="form-control" placeholder="Bio" />
+                        <input asp-for="Input.Bio" class="form-control" placeholder="Bio" maxlength="500" />
                         <label asp-for="Input.Bio">Bio (optional)</label>
                     </div>
                     <span asp-validation-for="Input.Bio" class="text-danger"></span>
@@ -74,16 +79,7 @@
             <button id="registerSubmit" type="submit" class="w-100 btn btn-lg btn-primary mt-4">Create account</button>
         </form>
 
-        @if ((Model.ExternalLogins?.Count ?? 0) > 0)
-        {
-            <hr class="my-4" />
-            <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="d-flex gap-2 justify-content-center">
-                @foreach (var provider in Model.ExternalLogins!)
-                {
-                    <button type="submit" class="btn btn-outline-secondary" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">@provider.DisplayName</button>
-                }
-            </form>
-        }
+        <partial name="_ExternalLoginButtons" model="Model.ExternalLogins" />
 
         <div class="text-center text-muted mt-4">
             Already have an account? <a asp-area="Identity" asp-page="/Account/Login">Log in</a>

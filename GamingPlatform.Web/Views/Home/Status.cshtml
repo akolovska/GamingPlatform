@@ -1,0 +1,18 @@
+@model int
+@{
+    var (title, text) = Model switch
+    {
+        404 => ("Page not found", "The page you're looking for doesn't exist, or it's no longer available."),
+        403 => ("Access denied", "You don't have permission to do that."),
+        400 => ("Bad request", "Something about that request wasn't right."),
+        _ => ("Something went wrong", "Please try again in a moment.")
+    };
+    ViewData["Title"] = title;
+}
+
+<div class="empty-state mx-auto mt-4" style="max-width:520px">
+    <span class="icon">@Model</span>
+    <h4 class="text-white">@title</h4>
+    <p>@text</p>
+    <a asp-controller="Games" asp-action="Index" class="btn btn-primary btn-sm">Back to the store</a>
+</div>

@@ -1,6 +1,29 @@
 ﻿@{
     ViewData["Title"] = "Privacy Policy";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<div class="panel" style="max-width:760px">
+    <h1 class="mb-3">@ViewData["Title"]</h1>
+
+    <h5>What we store</h5>
+    <ul>
+        <li>Your account details: username, name, email address, date of birth and password (stored only as a secure hash).</li>
+        <li>Your profile: bio, profile picture and wishlist visibility setting.</li>
+        <li>Your activity: games in your library and wishlist, friends, blocked users and reviews.</li>
+    </ul>
+
+    <h5>Why</h5>
+    <p>To run your account, deliver the games you get, and show your profile to other players as your settings allow. We ask for your date of birth because you must be at least 18 to create an account.</p>
+
+    <h5>Payments</h5>
+    <p>Payments are handled by Stripe. We never see or store your card details. We keep a record of each purchase (games, prices, date) for accounting, also after an account is deleted; it then no longer shows who you were.</p>
+
+    <h5>Signing in with Google</h5>
+    <p>If you use "Continue with Google", we receive your name and email address from Google, and nothing else.</p>
+
+    <h5>Your choices</h5>
+    <ul>
+        <li>Change your profile, email and wishlist visibility in <a asp-controller="Account" asp-action="Edit">Account settings</a>.</li>
+        <li>Delete your account at any time from the same page. Your account, library, wishlist, cart, notifications and friends list are removed permanently. Reviews stay, shown as written by "Deleted user".</li>
+    </ul>
+</div>

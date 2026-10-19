@@ -2,6 +2,7 @@
 @model GamingPlatform.Web.Areas.Identity.Pages.Account.LoginModel
 @{
     ViewData["Title"] = "Log in";
+    ViewData["ReturnUrl"] = Model.ReturnUrl;
 }
 
 <div class="auth-wrap">
@@ -29,13 +30,18 @@
                 <span asp-validation-for="Input.Password" class="text-danger"></span>
             </div>
 
-            <div class="form-check mb-4">
-                <input asp-for="Input.RememberMe" class="form-check-input" />
-                <label asp-for="Input.RememberMe" class="form-check-label"></label>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="form-check">
+                    <input asp-for="Input.RememberMe" class="form-check-input" />
+                    <label asp-for="Input.RememberMe" class="form-check-label"></label>
+                </div>
+                <a asp-area="Identity" asp-page="/Account/ForgotPassword" class="small">Forgot your password?</a>
             </div>
 
             <button type="submit" class="btn btn-primary w-100 btn-lg">Log in</button>
         </form>
+
+        <partial name="_ExternalLoginButtons" model="Model.ExternalLogins" />
 
         <hr class="my-4" />
         <div class="text-center text-muted">

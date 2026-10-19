@@ -1,0 +1,16 @@
+@model IList<Microsoft.AspNetCore.Authentication.AuthenticationScheme>
+@* "Continue with Google" on the Login and Register pages. Shown only when Google is configured. *@
+@if (Model.Any())
+{
+    <div class="d-flex align-items-center gap-2 my-3 text-muted small">
+        <hr class="flex-grow-1" /> or <hr class="flex-grow-1" />
+    </div>
+    <form asp-area="Identity" asp-page="/Account/ExternalLogin" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" class="d-grid gap-2">
+        @foreach (var provider in Model)
+        {
+            <button type="submit" class="btn btn-outline-light" name="provider" value="@provider.Name" data-no-loading>
+                Continue with @provider.DisplayName
+            </button>
+        }
+    </form>
+}

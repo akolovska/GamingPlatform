@@ -1,19 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using GamingPlatform.Domain.DTO;
 using GamingPlatform.Domain.Models;
 
 namespace GamingPlatform.Service.Interfaces
 {
+    // Studios. Linking a user to a studio gives them the Dev role; unlinking takes it away.
     public interface IDevService
     {
-        void AddDev(Dev dev);
-        void UpdateDev(Dev dev);
-        void DeleteDev(Guid id);
-        Dev? GetDevById(Guid id);
-        Dev? GetDevByUserId(string userId);
-        List<Dev> GetAllDevs();
+        Dev? GetById(Guid id);
+        Dev? GetByUserId(string userId);
+        List<StudioDto> GetAll();
+
+        Task<ServiceResult> CreateAsync(string name, string? ownerUserName);
+        Task<ServiceResult> SetOwnerAsync(Guid id, string? ownerUserName); // empty name = unlink
+        Task<ServiceResult> DeleteAsync(Guid id);                          // only studios without games
     }
 }

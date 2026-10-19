@@ -6,27 +6,17 @@ namespace GamingPlatform.Web.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
+        // The store is the home page
+        public IActionResult Index() => RedirectToAction("Index", "Games");
 
-        public HomeController(ILogger<HomeController> logger)
-        {
-            _logger = logger;
-        }
-
-        public IActionResult Index()
-        {
-            return RedirectToAction("Index", "Games");
-        }
-
-        public IActionResult Privacy()
-        {
-            return View();
-        }
+        public IActionResult Privacy() => View();
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-        }
+        public IActionResult Error() =>
+            View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+
+        // Shown for 404 and other status codes (see UseStatusCodePagesWithReExecute in Program.cs)
+        [Route("Home/Status/{code:int}")]
+        public IActionResult Status(int code) => View(code);
     }
 }

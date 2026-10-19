@@ -11,9 +11,7 @@
         el.textContent = message;
         stack.appendChild(el);
         setTimeout(function () {
-            el.style.transition = 'opacity .3s, transform .3s';
-            el.style.opacity = '0';
-            el.style.transform = 'translateX(30px)';
+            el.classList.add('leaving'); // leaves along the way it came in (see .toast-msg in site.css)
             setTimeout(function () { el.remove(); }, 300);
         }, 4500);
     }
@@ -64,70 +62,11 @@
         img.replaceWith(ph);
     }, true);
 
-    // ---------- Store: live search, genre chips, free-only, sort ----------
-    var grid = document.getElementById('game-grid');
-    if (grid) {
-        var search = document.getElementById('game-search');
-        var navSearch = document.getElementById('nav-search');
-        var sortSel = document.getElementById('game-sort');
-        var freeChip = document.getElementById('chip-free');
-        var emptyMsg = document.getElementById('no-results');
-        var count = document.getElementById('result-count');
-        var cols = Array.prototype.slice.call(grid.children);
-
-        function apply() {
-            var q = ((search && search.value) || '').trim().toLowerCase();
-            var free = freeChip && freeChip.classList.contains('active');
-            var shown = 0;
-            cols.forEach(function (c) {
-                var ok = (!q || c.dataset.title.indexOf(q) > -1 || c.dataset.meta.indexOf(q) > -1) &&
-                         (!free || parseFloat(c.dataset.price) === 0);
-                c.classList.toggle('d-none', !ok);
-                if (ok) shown++;
-            });
-            if (emptyMsg) emptyMsg.classList.toggle('d-none', shown !== 0);
-            if (count) count.textContent = shown + (shown === 1 ? ' game' : ' games');
-        }
-
-        function sort() {
-            var mode = sortSel ? sortSel.value : 'default';
-            var sorted = cols.slice();
-            var by = {
-                'name': function (a, b) { return a.dataset.title.localeCompare(b.dataset.title); },
-                'price-asc': function (a, b) { return a.dataset.price - b.dataset.price; },
-                'price-desc': function (a, b) { return b.dataset.price - a.dataset.price; },
-                'newest': function (a, b) { return (b.dataset.date || '').localeCompare(a.dataset.date || ''); }
-            };
-            if (by[mode]) sorted.sort(by[mode]);
-            sorted.forEach(function (c) { grid.appendChild(c); });
-        }
-
-        if (search) search.addEventListener('input', apply);
-        if (navSearch) {
-            navSearch.addEventListener('input', function () { if (search) { search.value = navSearch.value; apply(); } });
-        }
-        if (sortSel) sortSel.addEventListener('change', sort);
-        if (freeChip) freeChip.addEventListener('click', function () { freeChip.classList.toggle('active'); apply(); });
-        apply();
-    }
-
-    // Navbar search on non-store pages goes to the store with a query
-    var navForm = document.getElementById('nav-search-form');
-    if (navForm && !document.getElementById('game-grid')) {
-        navForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            var q = document.getElementById('nav-search').value;
-            location.href = navForm.dataset.storeUrl + '?q=' + encodeURIComponent(q);
-        });
-    } else if (navForm) {
-        navForm.addEventListener('submit', function (e) { e.preventDefault(); });
-        var initial = new URLSearchParams(location.search).get('q');
-        if (initial) {
-            var s = document.getElementById('game-search'), n = document.getElementById('nav-search');
-            if (s) { s.value = initial; s.dispatchEvent(new Event('input')); }
-            if (n) n.value = initial;
-        }
-    }
+    // ---------- Store filters: <select data-autosubmit>, <input type=checkbox data-autosubmit> ----------
+    // The store searches on the server; changing a filter just submits its form (it works without JS too).
+    document.querySelectorAll('[data-autosubmit]').forEach(function (el) {
+        el.addEventListener('change', function () { if (el.form) el.form.requestSubmit(); });
+    });
 
     // ---------- Cover image live preview on game forms ----------
     var coverInput = document.getElementById('CoverFile');

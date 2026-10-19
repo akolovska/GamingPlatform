@@ -1,5 +1,4 @@
 #nullable disable
-using System.Threading.Tasks;
 using GamingPlatform.Domain.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -18,21 +17,15 @@ namespace GamingPlatform.Web.Areas.Identity.Pages.Account
             _signInManager = signInManager;
         }
 
-        public void OnGet()
-        {
-        }
+        // Logging out only works by POST (the navbar button), so a link on another site can't log people out
+        public IActionResult OnGet() => RedirectToAction("Index", "Games", new { area = "" });
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
             await _signInManager.SignOutAsync();
-            if (returnUrl != null)
-            {
-                return LocalRedirect(returnUrl);
-            }
-            else
-            {
-                return RedirectToPage("/Index", new { area = "" });
-            }
+            return returnUrl != null
+                ? LocalRedirect(returnUrl)
+                : RedirectToAction("Index", "Games", new { area = "" });
         }
     }
 }

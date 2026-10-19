@@ -1,8 +1,11 @@
 @model GamingPlatform.Domain.DTO.GameFormDto
+@using GamingPlatform.Domain.DTO
+@using GamingPlatform.Domain.Identity
 @{
-    var allGenres = ViewBag.AllGenres as List<GamingPlatform.Domain.Models.Genre> ?? new();
+    var allGenres = ViewBag.AllGenres as List<GenreDto> ?? new();
     bool isCreate = ViewData["Mode"]?.ToString() == "Create";
-    var achievements = ViewBag.Achievements as List<GamingPlatform.Domain.Models.Achievement> ?? new();
+    var achievements = ViewBag.Achievements as List<AchievementDto> ?? new();
+    var coverUrl = ViewBag.CoverImageUrl as string;
 }
 
 <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
@@ -16,10 +19,10 @@
         <div class="panel">
             <h5 class="mb-3">Basics</h5>
 
-            @if (isCreate && User.IsInRole("Admin"))
+            @if (isCreate && User.IsInRole(Roles.Admin))
             {
                 <div class="mb-3">
-                    <label asp-for="DevId" class="form-label">Studio</label>
+                    <label asp-for="DevId" class="form-label"></label>
                     <select asp-for="DevId" asp-items="(SelectList)ViewBag.Studios" class="form-select">
                         <option value="">-- Choose a studio --</option>
                     </select>
@@ -29,6 +32,7 @@
             else if (isCreate)
             {
                 <div class="alert alert-info py-2">This game will be published under your studio.</div>
+                <span asp-validation-for="DevId" class="text-danger"></span>
             }
 
             <div class="mb-3">
@@ -63,7 +67,7 @@
 
             <div>
                 <label asp-for="SystemRequirements" class="form-label"></label>
-                <textarea asp-for="SystemRequirements" class="form-control" rows="3"></textarea>
+                <textarea asp-for="SystemRequirements" class="form-control" rows="3" maxlength="2000"></textarea>
                 <span asp-validation-for="SystemRequirements" class="text-danger"></span>
             </div>
         </div>
@@ -154,13 +158,12 @@
     <div class="col-lg-4">
         <div class="panel mb-4">
             <h5 class="mb-3">Cover</h5>
-            <div id="cover-preview" class="cover-preview mb-3" data-current="@Model.CoverImageUrl">Cover preview</div>
-            @* Keeps the existing cover on Edit when no new file is chosen *@
-            <input type="hidden" asp-for="CoverImageUrl" />
-            <label asp-for="CoverFile" class="form-label">Cover image</label>
-            <input asp-for="CoverFile" type="file" accept=".jpg,.jpeg,.png,.webp" class="form-control" />
-            <div class="form-text">JPG, PNG or WebP.</div>
-            <span asp-validation-for="CoverFile" class="text-danger"></span>
+            @* The current cover is shown here only; the server never reads a cover URL from this form *@
+            <div id="cover-preview" class="cover-preview mb-3" data-current="@coverUrl">Cover preview</div>
+            <label for="CoverFile" class="form-label">@(isCreate ? "Cover image" : "Replace cover image")</label>
+            <input id="CoverFile" name="CoverFile" type="file" accept=".jpg,.jpeg,.png,.webp" class="form-control" />
+            <div class="form-text">JPG, PNG or WebP, up to 2 MB.@(isCreate ? "" : " Leave empty to keep the current cover.")</div>
+            @Html.ValidationMessage("CoverFile", new { @class = "text-danger" })
         </div>
 
         <div class="panel">
@@ -178,12 +181,43 @@
                 <input asp-for="Platform" class="form-control" placeholder="e.g. PC, Windows" />
                 <span asp-validation-for="Platform" class="text-danger"></span>
             </div>
-            <div>
+            <div class="mb-3">
                 <label asp-for="ReleaseDate" class="form-label"></label>
                 <input asp-for="ReleaseDate" type="date" asp-format="{0:yyyy-MM-dd}" class="form-control" />
+                <div class="form-text">A future date shows the game as "Coming soon" and buying it is a pre-order.</div>
                 <span asp-validation-for="ReleaseDate" class="text-danger"></span>
             </div>
+            <div>
+                <label asp-for="TrailerUrl" class="form-label"></label>
+                <input asp-for="TrailerUrl" class="form-control" placeholder="https://www.youtube.com/watch?v=..." />
+                <span asp-validation-for="TrailerUrl" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="panel mt-4">
+            <h5 class="mb-1">Sale</h5>
+            <p class="text-muted small mb-3">Players who wishlisted the game get a notification and an email when the sale starts.</p>
+            <div class="mb-2">
+                <label asp-for="DiscountPercent" class="form-label"></label>
+                <div class="input-group">
+                    <input asp-for="DiscountPercent" type="number" min="0" max="90" class="form-control" />
+                    <span class="input-group-text">%</span>
+                </div>
+            </div>
+            <div class="row g-2">
+                <div class="col-6">
+                    <label asp-for="DiscountStartsAt" class="form-label">First day</label>
+                    <input asp-for="DiscountStartsAt" type="date" asp-format="{0:yyyy-MM-dd}" class="form-control" />
+                </div>
+                <div class="col-6">
+                    <label asp-for="DiscountEndsAt" class="form-label">Last day</label>
+                    <input asp-for="DiscountEndsAt" type="date" asp-format="{0:yyyy-MM-dd}" class="form-control" />
+                </div>
+            </div>
+            <span asp-validation-for="DiscountPercent" class="text-danger"></span>
+            <span asp-validation-for="DiscountStartsAt" class="text-danger"></span>
+            <span asp-validation-for="DiscountEndsAt" class="text-danger"></span>
+            <div class="form-text">0% means no sale. Leave the days empty to start now and run until you end it. Days are in UTC.</div>
         </div>
     </div>
 </div>
-

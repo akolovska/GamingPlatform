@@ -6,16 +6,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-GamingPlatform.Web-e5c2f7c4-ea94-4d6d-84ec-c7f4b51abfaa</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <!-- One Dockerfile at the repository root builds the whole solution -->
+    <DockerfileFile>..\Dockerfile</DockerfileFile>
+    <DockerfileContext>..</DockerfileContext>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
-    <PackageReference Include="MailKit" Version="4.16.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.28" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.15" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.28" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.28" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.23" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.28" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.28">
       <PrivateAssets>all</PrivateAssets>
@@ -23,20 +25,12 @@
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.23" />
-    <PackageReference Include="MimeKit" Version="4.16.0" />
-    <PackageReference Include="Stripe.net" Version="50.2.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\GamingPlatform.Domain\GamingPlatform.Domain.csproj" />
     <ProjectReference Include="..\GamingPlatform.Repository\GamingPlatform.Repository.csproj" />
     <ProjectReference Include="..\GamingPlatform.Service\GamingPlatform.Service.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Data\" />
-    <Folder Include="wwwroot\uploads\covers\" />
-    <Folder Include="wwwroot\uploads\" />
   </ItemGroup>
 
 </Project>

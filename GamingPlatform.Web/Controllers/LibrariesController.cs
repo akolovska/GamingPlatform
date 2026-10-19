@@ -1,239 +1,26 @@
-﻿using GamingPlatform.Domain.DTO;
-using GamingPlatform.Domain.Email;
-using GamingPlatform.Domain.Identity;
-using GamingPlatform.Domain.Models;
-using GamingPlatform.Repository.Data;
-using GamingPlatform.Service.Implementations;
-using GamingPlatform.Service.Interfaces;
+﻿using GamingPlatform.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Stripe;
-using Stripe.Checkout;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace GamingPlatform.Web.Controllers
 {
+    // Owned games. Buying happens in OrdersController.
     [Authorize]
-    public class LibrariesController : Controller
+    public class LibrariesController : AppController
     {
         private readonly ILibraryService _libraryService;
-        private readonly IGameService _gameService;
-        private readonly IWishlistService _wishlistService;
-        private readonly UserManager<GamingPlatformUser> _userManager;
-        private readonly StripeSettings _stripeSettings;
 
-        public LibrariesController(ILibraryService libraryService, IGameService gameService, IWishlistService wishlistService, UserManager<GamingPlatformUser> userManager, IOptions<StripeSettings> stripeSettings)
+        public LibrariesController(ILibraryService libraryService)
         {
             _libraryService = libraryService;
-            _gameService = gameService;
-            _wishlistService = wishlistService;
-            _userManager = userManager;
-            _stripeSettings = stripeSettings.Value;
         }
 
+        public IActionResult Index() => View(_libraryService.GetLibrary(UserId!, UserId!));
 
-        // GET: Libraries
-        public IActionResult Index()
+        public IActionResult Details(Guid id)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return Unauthorized();
-
-            var games = _libraryService.GetUserGames(userId); // List<Game>
-
-            // Map to GameDto
-            var gameDtos = games.Select(g => new GameDto
-            {
-                Id = g.Id,
-                Title = g.Title ?? "Unknown",
-                Description = g.Description,
-                GameGenres = g.GameGenres,
-                Platform = g.Platform,
-                Price = g.Price,
-                CoverImageUrl = g.CoverImageUrl,
-                SystemRequirements = g.SystemRequirements,
-                Developers = g.GameDevelopers?
-                    .Where(d => d.Developer != null)
-                    .Select(d => new DevDto
-                    {
-                        Id = d.Developer.Id,
-                        Name = d.Developer.StudioName ?? "Unknown"
-                    })
-                    .ToList() ?? new List<DevDto>(),
-                Achievements = g.Achievements?
-                    .Select(a => new AchievementDto
-                    {
-                        Id = a.Id,
-                        Name = a.Name ?? "Unknown",
-                        Description = a.Description
-                    })
-                    .ToList() ?? new List<AchievementDto>(),
-                Rating = g.Reviews != null && g.Reviews.Any() ? g.Reviews.Average(r => r.Score) : (double?)null,
-                InWishlist = _wishlistService.IsGameInWishlist(userId, g.Id),
-                InLibrary = _libraryService.IsGameInLibrary(userId, g.Id)
-            }).ToList();
-
-            return View(gameDtos);
+            var game = _libraryService.GetOwnedGame(UserId!, id);
+            return game == null ? NotFound() : View(game);
         }
-
-        // GET: Libraries/Details/5
-        public IActionResult Details(string id)
-        {
-            if (id == null) return NotFound();
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            var libraryEntry = _libraryService.GetGameFromLibrary(userId, Guid.Parse(id)); // returns Game object
-            if (libraryEntry == null) return NotFound();
-
-            // Map to GameDto
-            var gameDto = new GameDto
-            {
-                Id = libraryEntry.Id,
-                Title = libraryEntry.Title ?? "Unknown",
-                Description = libraryEntry.Description,
-                GameGenres = libraryEntry.GameGenres,
-                Platform = libraryEntry.Platform,
-                Price = libraryEntry.Price,
-                CoverImageUrl = libraryEntry.CoverImageUrl,
-                SystemRequirements = libraryEntry.SystemRequirements,
-                // Map developers to DevDto
-                Developers = libraryEntry.GameDevelopers?
-                    .Where(d => d.Developer != null)
-                    .Select(d => new DevDto
-                    {
-                        Id = d.Developer.Id,
-                        Name = d.Developer.StudioName ?? "Unknown"
-                    })
-                    .ToList() ?? new List<DevDto>(),
-                Achievements = libraryEntry.Achievements?
-                    .Select(a => new AchievementDto
-                    {
-                        Id = a.Id,
-                        Name = a.Name ?? "Unknown",
-                        Description = a.Description
-                    })
-                    .ToList() ?? new List<AchievementDto>(),
-
-                Rating = libraryEntry.Reviews != null && libraryEntry.Reviews.Any() ? libraryEntry.Reviews.Average(r => r.Score) : (double?)null,
-                InWishlist = _wishlistService.IsGameInWishlist(userId, Guid.Parse(id)),
-                InLibrary = _libraryService.IsGameInLibrary(userId, Guid.Parse(id))
-            };
-
-            return View(gameDto);
-        }
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> BuyGame(Guid gameId)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            var user = await _userManager.FindByIdAsync(userId);
-            if (!await _userManager.IsEmailConfirmedAsync(user))
-            {
-                TempData["Verified"] = "Please verify your email to access all features.";
-                return RedirectToAction("Details", "Games", new { id = gameId });
-            }
-
-            var game = _gameService.GetGameById(gameId);
-            if (game == null || game.IsDelisted) return NotFound();
-
-            if (_libraryService.IsGameInLibrary(userId, gameId))
-            {
-                TempData["Success"] = "You already own this game.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            // Free games skip Stripe
-            if ((game.Price ?? 0) <= 0)
-            {
-                _libraryService.AddGameToLibrary(userId, gameId);
-                TempData["Success"] = "Game added to your library.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            // Create Stripe Checkout session
-            var options = new SessionCreateOptions
-            {
-                PaymentMethodTypes = new List<string> { "card" },
-                LineItems = new List<SessionLineItemOptions>
-            {
-                new SessionLineItemOptions
-                {
-                    PriceData = new SessionLineItemPriceDataOptions
-                    {
-                        UnitAmount = (long)((game.Price ?? 0) * 100), // cents
-                        Currency = "usd",
-                        ProductData = new SessionLineItemPriceDataProductDataOptions
-                        {
-                            Name = game.Title,
-                            Description = game.Description
-                        }
-                    },
-                    Quantity = 1
-                }
-            },
-                Mode = "payment",
-                // Stripe replaces {CHECKOUT_SESSION_ID} with the real id; Url.Action would encode the braces
-                SuccessUrl = Url.Action("PaymentSuccess", "Libraries", null, Request.Scheme) + "?session_id={CHECKOUT_SESSION_ID}",
-                CancelUrl = Url.Action("Details", "Games", new { id = game.Id }, Request.Scheme),
-                // Set server-side, so the browser can't change which game or user gets it
-                ClientReferenceId = userId,
-                Metadata = new Dictionary<string, string>
-                {
-                    ["gameId"] = game.Id.ToString(),
-                    ["userId"] = userId
-                }
-            };
-            Session session = await StripeSessions().CreateAsync(options);
-
-            // Redirect user to Stripe Checkout
-            return Redirect(session.Url);
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> PaymentSuccess(string session_id)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
-            if (string.IsNullOrEmpty(session_id)) return BadRequest();
-
-            // Ask Stripe what actually happened instead of trusting the URL
-            Session session;
-            try
-            {
-                session = await StripeSessions().GetAsync(session_id);
-            }
-            catch (StripeException)
-            {
-                return BadRequest();
-            }
-
-            if (session.PaymentStatus != "paid")
-            {
-                TempData["Error"] = "Payment was not completed.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            if (session.Metadata == null ||
-                !session.Metadata.TryGetValue("userId", out var paidBy) || paidBy != userId ||
-                !session.Metadata.TryGetValue("gameId", out var gameIdText) || !Guid.TryParse(gameIdText, out var gameId))
-                return Forbid();
-
-            // Refreshing this page must not add the game twice
-            if (!_libraryService.IsGameInLibrary(userId, gameId))
-                _libraryService.AddGameToLibrary(userId, gameId);
-
-            TempData["Success"] = "Payment successful! Game added to your library.";
-            return RedirectToAction(nameof(Index));
-        }
-
-        private SessionService StripeSessions() => new SessionService(new StripeClient(_stripeSettings.SecretKey));
     }
 }

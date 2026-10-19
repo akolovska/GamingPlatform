@@ -19,5 +19,8 @@ namespace GamingPlatform.Domain.Identity
         public ICollection<Friend> FriendshipsSent { get; set; }
         public ICollection<Friend> FriendshipsReceived { get; set; }
         public WishlistVisibility WishlistVisibility { get; set; } = WishlistVisibility.FriendsOnly;
+
+        // Email me when a game on my wishlist goes on sale (the in-app notification always comes)
+        public bool WishlistSaleEmails { get; set; } = true;
     }
 }

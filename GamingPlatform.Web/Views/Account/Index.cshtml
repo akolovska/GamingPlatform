@@ -1,13 +1,7 @@
 @using GamingPlatform.Web.Helpers
-@using GamingPlatform.Domain.DTO
-@model GamingPlatform.Domain.Identity.GamingPlatformUser
+@model GamingPlatform.Domain.DTO.ProfileDto
 @{
     ViewData["Title"] = "My Account";
-    var friends = ViewBag.Friends as List<GamingPlatform.Domain.Identity.GamingPlatformUser> ?? new();
-    var games = ViewBag.Games as List<GameDto> ?? new();
-    var pending = ViewBag.PendingRequests as List<PendingRequestDto> ?? new();
-    var blocked = ViewBag.BlockedUsers as List<GamingPlatform.Domain.Identity.GamingPlatformUser> ?? new();
-    var isVerified = ViewBag.IsVerified as bool? ?? false;
 }
 
 <!-- Profile banner -->
@@ -18,26 +12,26 @@
         <div class="text-muted small mb-2">@Model.Email</div>
         <p class="mb-3">@(string.IsNullOrWhiteSpace(Model.Bio) ? "No bio yet." : Model.Bio)</p>
         <div class="d-flex flex-wrap gap-4 small">
-            <div><span class="fs-5 fw-bold text-white">@games.Count</span> <span class="text-muted">games</span></div>
-            <div><span class="fs-5 fw-bold text-white">@friends.Count</span> <span class="text-muted">friends</span></div>
-            <div><span class="fs-5 fw-bold text-white">@pending.Count</span> <span class="text-muted">requests</span></div>
+            <div><span class="fs-5 fw-bold text-white">@Model.Games.Count</span> <span class="text-muted">games</span></div>
+            <div><span class="fs-5 fw-bold text-white">@Model.Friends.Count</span> <span class="text-muted">friends</span></div>
+            <div><span class="fs-5 fw-bold text-white">@Model.PendingRequests.Count</span> <span class="text-muted">requests</span></div>
         </div>
     </div>
     <div class="d-flex flex-column gap-2">
-        <a asp-action="Edit" class="btn btn-primary btn-sm">Edit profile</a>
+        <a asp-action="Edit" class="btn btn-primary btn-sm">Account settings</a>
         <a asp-controller="Wishlists" asp-action="Index" class="btn btn-outline-secondary btn-sm">My wishlist</a>
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#blockedModal">
-            Blocked users (@blocked.Count)
+            Blocked users (@Model.BlockedUsers.Count)
         </button>
     </div>
 </section>
 
-@if (!isVerified)
+@if (!Model.IsVerified)
 {
     <div class="row g-3 mb-4">
         <div class="col-md-6">
             <form asp-action="ResendConfirmationEmail" method="post" class="panel h-100">
-                <label class="form-label">Your email isn't verified yet</label>
+                <label class="form-label">Your email isn't verified yet. Verify it to buy games, use your wishlist and add friends.</label>
                 <button type="submit" class="btn btn-primary">Resend confirmation email</button>
             </form>
         </div>
@@ -47,18 +41,18 @@
 <div class="row g-3 mb-4">
     <div class="col-md-6">
         <form asp-action="Details" method="get" class="panel h-100">
-            <label class="form-label">Find a profile</label>
+            <label class="form-label" for="find-username">Find a profile</label>
             <div class="input-group">
-                <input type="text" name="requestId" class="form-control" placeholder="Username" required />
+                <input id="find-username" type="text" name="username" class="form-control" placeholder="Username" required />
                 <button type="submit" class="btn btn-outline-secondary">View</button>
             </div>
         </form>
     </div>
     <div class="col-md-6">
         <form asp-controller="Friends" asp-action="AddFriend" method="post" class="panel h-100">
-            <label class="form-label">Add a friend</label>
+            <label class="form-label" for="add-username">Add a friend</label>
             <div class="input-group">
-                <input type="text" name="username" class="form-control" placeholder="Friend's username" required />
+                <input id="add-username" type="text" name="username" class="form-control" placeholder="Friend's username" required />
                 <button type="submit" class="btn btn-primary">Send request</button>
             </div>
         </form>
@@ -66,24 +60,24 @@
 </div>
 
 <ul class="nav nav-pills nav-pills-dark mb-3" role="tablist">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-games" type="button">Games <span class="badge-pill">@games.Count</span></button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-friends" type="button">Friends <span class="badge-pill">@friends.Count</span></button></li>
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-games" type="button">Games <span class="badge-pill">@Model.Games.Count</span></button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-friends" type="button">Friends <span class="badge-pill">@Model.Friends.Count</span></button></li>
     <li class="nav-item">
         <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-requests" type="button">
-            Requests @if (pending.Any()) { <span class="badge rounded-pill bg-danger">@pending.Count</span> }
+            Requests @if (Model.PendingRequests.Any()) { <span class="badge rounded-pill bg-danger">@Model.PendingRequests.Count</span> }
         </button>
     </li>
 </ul>
 
 <div class="tab-content">
     <div class="tab-pane fade show active" id="tab-games">
-        @if (games.Any())
+        @if (Model.Games.Any())
         {
             <div class="row g-4">
-                @foreach (var game in games)
+                @foreach (var game in Model.Games)
                 {
                     <div class="col-6 col-md-4 col-lg-3">
-                        <partial name="_GameCard" model="GameCardModel.From(game)" />
+                        <partial name="_GameCard" model='GameCardModel.From(game, "Libraries")' />
                     </div>
                 }
             </div>
@@ -95,13 +89,13 @@
     </div>
 
     <div class="tab-pane fade" id="tab-friends">
-        @if (friends.Any())
+        @if (Model.Friends.Any())
         {
             <div class="row g-3">
-                @foreach (var f in friends)
+                @foreach (var f in Model.Friends)
                 {
                     <div class="col-md-6 col-lg-4">
-                        <a asp-action="Details" asp-route-requestId="@f.UserName" class="panel friend-row text-decoration-none d-flex">
+                        <a asp-action="Details" asp-route-username="@f.UserName" class="panel friend-row text-decoration-none d-flex">
                             <img src="@AvatarHelper.Resolve(f.ProfilePictureUrl)" class="avatar-sm" style="width:44px;height:44px" alt="" />
                             <span class="fw-semibold text-white">@f.UserName</span>
                         </a>
@@ -116,10 +110,10 @@
     </div>
 
     <div class="tab-pane fade" id="tab-requests">
-        @if (pending.Any())
+        @if (Model.PendingRequests.Any())
         {
             <div class="list-group">
-                @foreach (var req in pending)
+                @foreach (var req in Model.PendingRequests)
                 {
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <span class="fw-semibold text-white">@req.SenderUsername <span class="text-muted fw-normal">wants to be your friend</span></span>
@@ -153,10 +147,10 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                @if (blocked.Any())
+                @if (Model.BlockedUsers.Any())
                 {
                     <div class="list-group">
-                        @foreach (var b in blocked)
+                        @foreach (var b in Model.BlockedUsers)
                         {
                             <div class="list-group-item d-flex justify-content-between align-items-center">
                                 <span class="friend-row">
@@ -164,7 +158,7 @@
                                     @b.UserName
                                 </span>
                                 <form asp-controller="Friends" asp-action="UnblockUser" method="post">
-                                    <input type="hidden" name="requestId" value="@b.Id" />
+                                    <input type="hidden" name="userId" value="@b.Id" />
                                     <button type="submit" class="btn btn-outline-secondary btn-sm">Unblock</button>
                                 </form>
                             </div>

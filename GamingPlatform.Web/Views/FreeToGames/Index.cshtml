@@ -1,0 +1,38 @@
+@model List<GamingPlatform.Domain.API.FreeToGameGame>
+@{
+    ViewData["Title"] = "Free games";
+}
+
+<div class="page-header">
+    <h2>Free games <small class="text-muted fs-6">from FreeToGame</small></h2>
+</div>
+
+@if (ViewBag.Unavailable == true)
+{
+    <div class="empty-state">
+        <span class="icon">&#9888;</span>
+        The free games catalog is unavailable right now. Please try again later.
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var game in Model)
+        {
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="game-card">
+                    <div class="cover">
+                        <img src="@game.Thumbnail" alt="@game.Title" loading="lazy" />
+                    </div>
+                    <div class="body">
+                        <h3 class="title">
+                            <a class="stretched-link-card text-reset" asp-action="Details" asp-route-id="@game.Id">@game.Title</a>
+                        </h3>
+                        <div class="meta text-truncate">@game.Genre • @game.Platform</div>
+                        <div class="mt-auto pt-2"><span class="price-tag">Free to Play</span></div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

@@ -1,295 +1,298 @@
 ﻿using GamingPlatform.Domain.DTO;
-using GamingPlatform.Domain.Enum;
 using GamingPlatform.Domain.Identity;
-using GamingPlatform.Domain.Models;
 using GamingPlatform.Service.Interfaces;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
-using System.Text;
-using System.Text.Encodings.Web;
+using QRCoder;
 
 namespace GamingPlatform.Web.Controllers
 {
     [Authorize]
-    public class AccountController : Controller
+    public class AccountController : AppController
     {
-        private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
-        private const long MaxBytes = 2 * 1024 * 1024; // 2 MB
+        private const string AppName = "GamingPlatform"; // the name shown in authenticator apps
 
+        private readonly IAccountService _accountService;
         private readonly UserManager<GamingPlatformUser> _userManager;
-        private readonly IFriendService _friendService;
-        private readonly IGameService _gameService;
-        private readonly ILibraryService _libraryService;
-        private readonly IWishlistService _wishlistService;
-        private readonly IWebHostEnvironment _env;
-        private readonly IEmailSender _emailSender;
+        private readonly SignInManager<GamingPlatformUser> _signInManager;
 
         public AccountController(
+            IAccountService accountService,
             UserManager<GamingPlatformUser> userManager,
-            IFriendService friendService,
-            IGameService gameService,
-            ILibraryService libraryService,
-            IWishlistService wishlistService,
-            IWebHostEnvironment env,
-            IEmailSender emailSender)
+            SignInManager<GamingPlatformUser> signInManager)
         {
+            _accountService = accountService;
             _userManager = userManager;
-            _friendService = friendService;
-            _gameService = gameService;
-            _libraryService = libraryService;
-            _wishlistService = wishlistService;
-            _env = env;
-            _emailSender = emailSender;
+            _signInManager = signInManager;
         }
 
-        // ---------- My account ----------
+        // ---------- Profiles ----------
 
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null) return NotFound();
+            var profile = _accountService.GetMyProfile(UserId!);
+            return profile == null ? NotFound() : View(profile);
+        }
 
-            var pending = _friendService.GetPendingRequests(user.Id);
-            var senderIds = pending.Select(r => r.UserId).ToList();
-            var names = _userManager.Users
-                .Where(u => senderIds.Contains(u.Id))
-                .ToDictionary(u => u.Id, u => u.UserName ?? "Unknown");
+        // Another user's profile, by username
+        public IActionResult Details(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return RedirectToAction(nameof(Index));
 
-            ViewBag.PendingRequests = pending.Select(r => new PendingRequestDto
+            var profile = _accountService.GetProfile(username, UserId!);
+            if (profile == null)
             {
-                Id = r.Id,
-                SenderUsername = names.GetValueOrDefault(r.UserId, "Unknown")
-            }).ToList();
+                TempData["Error"] = "There is no user with that username.";
+                return RedirectToAction(nameof(Index));
+            }
+            if (profile.IsSelf) return RedirectToAction(nameof(Index));
 
-            ViewBag.IsVerified =await _userManager.IsEmailConfirmedAsync(user);
-            ViewBag.BlockedUsers = _friendService.GetBlockedUsers(user.Id);
-            ViewBag.Friends = _friendService.GetFriends(user.Id);
-            ViewBag.Games = BuildGameDtos(_libraryService.GetUserGames(user.Id), user.Id);
-            return View(user);
+            return View(profile);
         }
 
         // ---------- Edit profile ----------
 
         public async Task<IActionResult> Edit()
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null) return NotFound();
+            var dto = _accountService.GetProfileForEdit(UserId!);
+            if (dto == null) return NotFound();
 
-            ViewBag.Friends = _friendService.GetFriends(user.Id);
-            return View(user);
+            await LoadSettingsAsync();
+            return View(dto);
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(GamingPlatformUser model)
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(ProfileEditDto dto)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null) return NotFound();
-
-            // The posted model only contains Email and Bio, so restore the picture
-            // for any path where we re-render the view.
-            model.ProfilePictureUrl = user.ProfilePictureUrl;
-
-            if (!await _userManager.IsEmailConfirmedAsync(user))
+            if (ModelState.IsValid)
             {
-                TempData["Verified"] = "Please verify your email to access all features.";
-                ViewBag.Friends = _friendService.GetFriends(user.Id);
-                return View(model);
+                var result = await _accountService.UpdateProfileAsync(UserId!, dto);
+                if (result.Succeeded)
+                {
+                    // Saving the email changes the security stamp; refresh the cookie so the user stays signed in
+                    await RefreshSignInAsync();
+                    if (result.Value) await SendConfirmationEmailAsync();
+                    Flash(result);
+                    return RedirectToAction(nameof(Index));
+                }
+                AddErrors(result);
             }
 
-            // Only the fields this form may change. ProfilePictureUrl is
-            // changed only by UploadAvatar / RemoveAvatar.
-            user.Email = model.Email;
-            user.Bio = model.Bio;
-            if (Enum.IsDefined(typeof(WishlistVisibility), model.WishlistVisibility))
-                user.WishlistVisibility = model.WishlistVisibility;
-
-            var result = await _userManager.UpdateAsync(user);
-            if (result.Succeeded)
-                return RedirectToAction(nameof(Index));
-
-            foreach (var error in result.Errors)
-                ModelState.AddModelError("", error.Description);
-
-            ViewBag.Friends = _friendService.GetFriends(user.Id);
-            return View(model);
+            await LoadSettingsAsync();
+            return View(dto);
         }
 
-        // ---------- Avatar ----------
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> UploadAvatar(IFormFile avatarFile)
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadAvatar(IFormFile? avatarFile)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null) return NotFound();
-
-            if (avatarFile == null || avatarFile.Length == 0)
-            {
-                TempData["AvatarError"] = "Please choose a file.";
-                return RedirectToAction(nameof(Edit));
-            }
-
-            var ext = Path.GetExtension(avatarFile.FileName).ToLowerInvariant();
-            if (!AllowedExtensions.Contains(ext) || avatarFile.Length > MaxBytes)
-            {
-                TempData["AvatarError"] = "Use a JPG, PNG or WebP under 2 MB.";
-                return RedirectToAction(nameof(Edit));
-            }
-
-            var folder = Path.Combine(_env.WebRootPath, "uploads", "avatars");
-            Directory.CreateDirectory(folder);
-
-            // Never trust the client's filename; generate our own
-            var fileName = $"{user.Id}_{Guid.NewGuid():N}{ext}";
-            await using (var stream = System.IO.File.Create(Path.Combine(folder, fileName)))
-            {
-                await avatarFile.CopyToAsync(stream);
-            }
-
-            DeleteAvatarFile(user.ProfilePictureUrl); // remove the old one
-
-            user.ProfilePictureUrl = $"/uploads/avatars/{fileName}";
-            await _userManager.UpdateAsync(user);
-
+            Flash(await _accountService.UpdateAvatarAsync(UserId!, avatarFile));
             return RedirectToAction(nameof(Edit));
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> RemoveAvatar()
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null) return NotFound();
-
-            DeleteAvatarFile(user.ProfilePictureUrl);
-
-            user.ProfilePictureUrl = null; // falls back to the default avatar
-            await _userManager.UpdateAsync(user);
-
+            await _accountService.RemoveAvatarAsync(UserId!);
+            TempData["Success"] = "Profile picture removed.";
             return RedirectToAction(nameof(Edit));
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> ResendConfirmationEmail()
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null) return NotFound();
-
-            // Button is hidden for verified users, but the URL can still be posted to directly
-            if (await _userManager.IsEmailConfirmedAsync(user))
-                return RedirectToAction(nameof(Index));
-
-            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-            var callbackUrl = Url.Page(
-                "/Account/ConfirmEmail",
-                pageHandler: null,
-                values: new { area = "Identity", userId = user.Id, code = token },
-                protocol: Request.Scheme);
-
-            await _emailSender.SendEmailAsync(
-                user.Email!,
-                "GamingPlatform - Confirm Your Email",
-                $@"Hello {user.UserName},<br/><br/>
-                Please confirm your email by <a href='{HtmlEncoder.Default.Encode(callbackUrl!)}'>clicking here</a>.");
-
-            TempData["Success"] = $"Confirmation email sent to {user.Email}.";
+            if (await SendConfirmationEmailAsync())
+                TempData["Success"] = "Confirmation email sent. Check your inbox.";
+            else
+                TempData["Error"] = "We couldn't send the email. Your address may already be confirmed, or please try again later.";
             return RedirectToAction(nameof(Index));
         }
 
-        // ---------- Other people's profiles ----------
+        // ---------- Password ----------
 
-        public async Task<IActionResult> Details(string requestId)
+        public async Task<IActionResult> ChangePassword()
         {
-            var loggedInUser = await _userManager.GetUserAsync(User);
-            if (loggedInUser == null) return NotFound();
+            ViewBag.HasPassword = (await _accountService.GetSecurityStatusAsync(UserId!))?.HasPassword ?? true;
+            return View(new ChangePasswordDto());
+        }
 
-            var user = _userManager.Users
-                .FirstOrDefault(u => u.UserName == requestId);
-            if (user == null) return NotFound();
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
+        {
+            bool hasPassword = (await _accountService.GetSecurityStatusAsync(UserId!))?.HasPassword ?? true;
+            if (!hasPassword) ModelState.Remove(nameof(ChangePasswordDto.CurrentPassword)); // setting a first password
 
-            // Viewing yourself -> go to your own profile page
-            if (user.Id == loggedInUser.Id)
-                return RedirectToAction(nameof(Index));
-
-            // A block in either direction hides the profile
-            if (_friendService.IsBlockedEitherWay(loggedInUser.Id, user.Id))
+            if (ModelState.IsValid)
             {
-                TempData["Blocked"] = "This user is unavailable.";
-                return RedirectToAction(nameof(Index));
+                var result = await _accountService.ChangePasswordAsync(UserId!, dto);
+                if (result.Succeeded)
+                {
+                    await RefreshSignInAsync();
+                    Flash(result);
+                    return RedirectToAction(nameof(Edit));
+                }
+                AddErrors(result);
+            }
+            ViewBag.HasPassword = hasPassword;
+            return View(new ChangePasswordDto()); // never send passwords back to the browser
+        }
+
+        // ---------- Two-factor login ----------
+
+        public async Task<IActionResult> EnableAuthenticator()
+        {
+            var setup = await _accountService.GetAuthenticatorSetupAsync(UserId!, AppName);
+            if (setup == null) return NotFound();
+
+            ViewBag.Setup = setup;
+            ViewBag.QrCode = QrCodeDataUri(setup.AuthenticatorUri);
+            return View(new TwoFactorCodeDto());
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> EnableAuthenticator(TwoFactorCodeDto dto)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _accountService.EnableTwoFactorAsync(UserId!, dto.Code);
+                if (result.Succeeded)
+                {
+                    await RefreshSignInAsync();
+                    Flash(result);
+                    return ShowRecoveryCodes(result.Value!);
+                }
+                AddErrors(result);
             }
 
-            var friends = _friendService.GetFriends(user.Id);
-            var games = _libraryService.GetUserGames(user.Id);
+            var setup = await _accountService.GetAuthenticatorSetupAsync(UserId!, AppName);
+            ViewBag.Setup = setup;
+            ViewBag.QrCode = QrCodeDataUri(setup!.AuthenticatorUri);
+            return View(new TwoFactorCodeDto());
+        }
 
-            var pendingRow = _friendService.GetPendingBetween(loggedInUser.Id, user.Id);
-            ViewBag.CanViewWishlist = _friendService.CanViewWishlist(user, loggedInUser.Id);
-            ViewBag.Friends = friends;
-            ViewBag.IsFriend = friends.Any(f => f.Id == loggedInUser.Id);
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> DisableTwoFactor()
+        {
+            Flash(await _accountService.DisableTwoFactorAsync(UserId!));
+            await RefreshSignInAsync();
+            return RedirectToAction(nameof(Edit));
+        }
 
-            // I already sent them a request
-            ViewBag.RequestSent = pendingRow != null && pendingRow.UserId == loggedInUser.Id;
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> NewRecoveryCodes()
+        {
+            var result = await _accountService.NewRecoveryCodesAsync(UserId!);
+            Flash(result);
+            return result.Succeeded ? ShowRecoveryCodes(result.Value!) : RedirectToAction(nameof(Edit));
+        }
 
-            // They sent me one: the view offers Accept / Decline using this row id
-            ViewBag.IncomingRequestId = pendingRow != null && pendingRow.FriendId == loggedInUser.Id
-                ? pendingRow.Id
-                : (Guid?)null;
+        // Shown once, right after they're made: they're stored only as hashes
+        public IActionResult RecoveryCodes()
+        {
+            if (TempData["RecoveryCodes"] is not string codes) return RedirectToAction(nameof(Edit));
+            return View(codes.Split(' '));
+        }
 
-            ViewBag.Games = BuildGameDtos(games, loggedInUser.Id);
+        private IActionResult ShowRecoveryCodes(List<string> codes)
+        {
+            TempData["RecoveryCodes"] = string.Join(' ', codes);
+            return RedirectToAction(nameof(RecoveryCodes));
+        }
 
-            return View(user);
+        // ---------- Connected accounts (Google) ----------
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> LinkLogin(string provider)
+        {
+            // Clear any half-finished external sign-in, then send the user to Google
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+            var redirectUrl = Url.Action(nameof(LinkLoginCallback));
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl, UserId);
+            return new ChallengeResult(provider, properties);
+        }
+
+        public async Task<IActionResult> LinkLoginCallback()
+        {
+            // The userId check makes sure this Google login is linked to the account that asked for it
+            var info = await _signInManager.GetExternalLoginInfoAsync(UserId);
+            if (info == null)
+            {
+                TempData["Error"] = "Connecting failed. Please try again.";
+                return RedirectToAction(nameof(Edit));
+            }
+
+            var result = await _accountService.LinkExternalLoginAsync(UserId!, info);
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+            await RefreshSignInAsync();
+            Flash(result);
+            return RedirectToAction(nameof(Edit));
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveLogin(string provider)
+        {
+            Flash(await _accountService.RemoveExternalLoginAsync(UserId!, provider));
+            await RefreshSignInAsync();
+            return RedirectToAction(nameof(Edit));
+        }
+
+        // ---------- Delete account ----------
+
+        public async Task<IActionResult> Delete()
+        {
+            ViewBag.HasPassword = (await _accountService.GetSecurityStatusAsync(UserId!))?.HasPassword ?? true;
+            return View(new DeleteAccountDto());
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(DeleteAccountDto dto)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _accountService.DeleteAccountAsync(UserId!, dto.Password);
+                if (result.Succeeded)
+                {
+                    await _signInManager.SignOutAsync();
+                    TempData["Success"] = "Your account has been deleted.";
+                    return RedirectToAction("Index", "Games");
+                }
+                AddErrors(result);
+            }
+            ViewBag.HasPassword = (await _accountService.GetSecurityStatusAsync(UserId!))?.HasPassword ?? true;
+            return View(new DeleteAccountDto());
         }
 
         // ---------- Helpers ----------
 
-        // wishlist/library flags are computed for the VIEWER
-        private List<GameDto> BuildGameDtos(IEnumerable<Game> games, string viewerId)
+        private async Task LoadSettingsAsync()
         {
-            return games.Select(g => new GameDto
-            {
-                Id = g.Id,
-                Title = g.Title ?? "Unknown",
-                Description = g.Description,
-                GameGenres = g.GameGenres,
-                Platform = g.Platform,
-                Price = g.Price,
-                CoverImageUrl = g.CoverImageUrl,
-                SystemRequirements = g.SystemRequirements,
-                Developers = g.GameDevelopers?
-                    .Where(d => d.Developer != null)
-                    .Select(d => new DevDto
-                    {
-                        Id = d.Developer.Id,
-                        Name = d.Developer.StudioName ?? "Unknown"
-                    })
-                    .ToList() ?? new List<DevDto>(),
-                Achievements = g.Achievements?
-                    .Select(a => new AchievementDto
-                    {
-                        Id = a.Id,
-                        Name = a.Name ?? "Unknown",
-                        Description = a.Description
-                    })
-                    .ToList() ?? new List<AchievementDto>(),
-                Rating = g.Reviews != null && g.Reviews.Any() ? g.Reviews.Average(r => r.Score) : (double?)null,
-                InWishlist = _wishlistService.IsGameInWishlist(viewerId, g.Id),
-                InLibrary = _libraryService.IsGameInLibrary(viewerId, g.Id)
-            }).ToList();
+            ViewBag.ProfilePictureUrl = _userManager.Users
+                .Where(u => u.Id == UserId)
+                .Select(u => u.ProfilePictureUrl)
+                .FirstOrDefault();
+            ViewBag.Security = await _accountService.GetSecurityStatusAsync(UserId!);
+            ViewBag.ExternalProviders = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
         }
 
-        private void DeleteAvatarFile(string? url)
+        private async Task RefreshSignInAsync()
         {
-            // Only ever delete files inside our own avatars folder
-            if (string.IsNullOrEmpty(url) || !url.StartsWith("/uploads/avatars/")) return;
+            var user = await _userManager.GetUserAsync(User);
+            if (user != null) await _signInManager.RefreshSignInAsync(user);
+        }
 
-            var path = Path.Combine(_env.WebRootPath, url.TrimStart('/'));
-            if (System.IO.File.Exists(path))
-                System.IO.File.Delete(path);
+        private Task<bool> SendConfirmationEmailAsync() =>
+            _accountService.SendConfirmationEmailAsync(UserId!, (userId, code) =>
+                Url.Page("/Account/ConfirmEmail", pageHandler: null,
+                    values: new { area = "Identity", userId, code }, protocol: Request.Scheme)!);
+
+        // The QR code is drawn here on the server, so the secret never goes to a third-party QR service
+        private static string QrCodeDataUri(string text)
+        {
+            using var generator = new QRCodeGenerator();
+            using var data = generator.CreateQrCode(text, QRCodeGenerator.ECCLevel.Q);
+            var png = new PngByteQRCode(data).GetGraphic(6);
+            return "data:image/png;base64," + Convert.ToBase64String(png);
         }
     }
 }

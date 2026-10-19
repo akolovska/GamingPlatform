@@ -1,0 +1,82 @@
+@model GamingPlatform.Domain.DTO.PagedResult<GamingPlatform.Domain.DTO.AdminUserDto>
+@using GamingPlatform.Domain.Identity
+@{
+    ViewData["Title"] = "Users";
+    var q = ViewBag.Query as string;
+}
+
+<div class="page-header">
+    <h2>Users <small class="text-muted fs-6">@Model.TotalCount</small></h2>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Genres &amp; studios</a>
+</div>
+
+<form method="get" asp-action="Users" class="toolbar mb-3">
+    <input name="q" value="@q" type="search" class="form-control form-control-sm" style="max-width:320px" placeholder="Search by username or email" />
+    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+</form>
+
+<p class="text-muted small">
+    Banned users can't log in and are signed out within a minute. Devs are made on the
+    <a asp-action="Index">Genres &amp; studios</a> page by linking them to a studio.
+</p>
+
+<div class="table-responsive">
+    <table class="table table-dark table-hover align-middle">
+        <thead>
+            <tr><th>User</th><th>Email</th><th>Roles</th><th>Status</th><th class="text-end">Actions</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var u in Model.Items)
+            {
+                <tr>
+                    <td>
+                        <a asp-controller="Account" asp-action="Details" asp-route-username="@u.UserName" class="fw-semibold">@u.UserName</a>
+                        @if (u.IsSelf) { <span class="badge-pill ms-1">you</span> }
+                    </td>
+                    <td class="small">
+                        @u.Email
+                        @if (!u.EmailConfirmed) { <span class="text-muted">(unconfirmed)</span> }
+                    </td>
+                    <td class="small">@(u.Roles.Any() ? string.Join(", ", u.Roles) : "Player")</td>
+                    <td class="small">
+                        @if (u.IsBanned) { <span style="color:var(--danger)">Banned</span> }
+                        else { <span>Active</span> }
+                        @if (u.TwoFactorEnabled) { <span class="text-muted">&middot; 2FA</span> }
+                    </td>
+                    <td class="text-end">
+                        @if (!u.IsSelf)
+                        {
+                            <div class="d-inline-flex gap-1">
+                                @{ bool isAdmin = u.Roles.Contains(Roles.Admin); }
+                                <form asp-action="SetAdmin" method="post" data-confirm="@(isAdmin ? $"Remove {u.UserName}'s admin role?" : $"Make {u.UserName} an admin? Admins can manage everything.")">
+                                    <input type="hidden" name="id" value="@u.Id" /><input type="hidden" name="makeAdmin" value="@(!isAdmin)" />
+                                    <input type="hidden" name="q" value="@q" /><input type="hidden" name="page" value="@Model.Page" />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">@(isAdmin ? "Remove admin" : "Make admin")</button>
+                                </form>
+                                <form asp-action="@(u.IsBanned ? "UnbanUser" : "BanUser")" method="post" data-confirm="@(u.IsBanned ? $"Unban {u.UserName}?" : $"Ban {u.UserName}? They won't be able to log in.")">
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <input type="hidden" name="q" value="@q" /><input type="hidden" name="page" value="@Model.Page" />
+                                    <button type="submit" class="btn btn-outline-warning btn-sm">@(u.IsBanned ? "Unban" : "Ban")</button>
+                                </form>
+                                <form asp-action="DeleteUser" method="post" data-confirm="Delete @u.UserName's account permanently? This can't be undone.">
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <input type="hidden" name="q" value="@q" /><input type="hidden" name="page" value="@Model.Page" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                                </form>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="d-flex justify-content-center align-items-center gap-2" aria-label="Pages">
+        @if (Model.Page > 1) { <a asp-action="Users" asp-route-q="@q" asp-route-page="@(Model.Page - 1)" class="btn btn-outline-secondary btn-sm">&larr; Previous</a> }
+        <span class="text-muted small">Page @Model.Page of @Model.TotalPages</span>
+        @if (Model.Page < Model.TotalPages) { <a asp-action="Users" asp-route-q="@q" asp-route-page="@(Model.Page + 1)" class="btn btn-outline-secondary btn-sm">Next &rarr;</a> }
+    </nav>
+}

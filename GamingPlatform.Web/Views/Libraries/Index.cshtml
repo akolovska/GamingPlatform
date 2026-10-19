@@ -1,13 +1,12 @@
 @using GamingPlatform.Web.Helpers
-@model IEnumerable<GamingPlatform.Domain.DTO.GameDto>
+@model List<GamingPlatform.Domain.DTO.GameDto>
 
 @{
     ViewData["Title"] = "My Library";
-    const string controller = "Libraries";
 }
 
 <div class="page-header">
-    <h2>My Library <small class="text-muted fs-6">@Model.Count() @(Model.Count() == 1 ? "game" : "games")</small></h2>
+    <h2>My Library <small class="text-muted fs-6">@Model.Count @(Model.Count == 1 ? "game" : "games")</small></h2>
     <a asp-controller="Games" asp-action="Index" class="btn btn-outline-secondary btn-sm">Browse store</a>
 </div>
 
@@ -25,10 +24,10 @@ else
         @foreach (var game in Model)
         {
             <div class="col-6 col-md-4 col-lg-3"
-                 data-title="@(game.Title?.ToLowerInvariant())"
-                 data-meta="@(($"{string.Join(" ", game.GameGenres.Where(x => x.Genre != null).Select(x => x.Genre!.Name))} {game.Platform}").ToLowerInvariant())"
+                 data-title="@game.Title.ToLowerInvariant()"
+                 data-meta="@($"{string.Join(" ", game.Genres)} {game.Platform}".ToLowerInvariant())"
                  data-price="@((game.Price ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))">
-                <partial name="_GameCard" model="@GameCardModel.From(game, controller)" />
+                <partial name="_GameCard" model='GameCardModel.From(game, "Libraries")' />
             </div>
         }
     </div>

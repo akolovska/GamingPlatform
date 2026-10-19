@@ -1,0 +1,47 @@
+# Runs the tests on every push and pull request, then checks that the app's Docker image builds.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # A throwaway SQL Server for the tests. The password only exists inside this CI run.
+    services:
+      sql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Ci_Only_Passw0rd!"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Ci_Only_Passw0rd!' -Q 'SELECT 1' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+          --health-start-period 20s
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the test image
+        run: docker build --target test -t gamingplatform-tests .
+
+      # --network host lets the test container reach the SQL Server service on localhost:1433
+      - name: Run the tests
+        run: >-
+          docker run --rm --network host
+          -e TEST_CONNECTION_STRING="Server=localhost,1433;Database=GamingPlatform_Tests;User Id=sa;Password=Ci_Only_Passw0rd!;TrustServerCertificate=True;MultipleActiveResultSets=true"
+          gamingplatform-tests
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the app image
+        run: docker build -t gamingplatform .

@@ -1,21 +1,32 @@
-﻿using GamingPlatform.Domain.Models;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using GamingPlatform.Domain.DTO;
+using GamingPlatform.Domain.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace GamingPlatform.Service.Interfaces
 {
     public interface IGameService
     {
-        void AddGame(Game game);
-        void DeleteGame(Guid id);
-        void UpdateGame(Game game);
+        // Store pages. viewerId (null when logged out) fills InLibrary/InWishlist/InCart.
+        PagedResult<GameDto> Search(StoreQueryDto query, string? viewerId);
+        List<GameDto> GetTrending(string? viewerId, int take = 8, int days = 7);
+        List<RecommendationDto> GetRecommendations(string userId, int rows = 3, int perRow = 6);
+        List<GameDto> GetByIds(IList<Guid> ids, string? viewerId, bool includeDelisted); // keeps the order of ids
+
+        // null = missing, or delisted and not yours. reviewSort: "helpful" (default) or "newest".
+        GameDetailsDto? GetDetails(Guid id, string? viewerId, bool isAdmin, string? reviewSort = null);
+
         Game? GetGameById(Guid id);
-        List<Game> GetAllGames(bool includeDelisted = false);
-        List<Game> GetGamesByIds(List<Guid> ids);
-        List<Game> GetTrending(int take = 8, int days = 7);
+
+        // Admin: any game. Dev: only games of the studio linked to their account.
+        bool CanManage(Game game, string? userId, bool isAdmin);
+
+        ServiceResult<GameEditDto> GetForEdit(Guid id, string userId, bool isAdmin);
+        Task<ServiceResult<Guid>> CreateAsync(GameFormDto form, IFormFile? cover, string userId, bool isAdmin);
+        Task<ServiceResult> UpdateAsync(Guid id, GameFormDto form, IFormFile? cover, string userId, bool isAdmin);
+        ServiceResult SetListed(Guid id, bool listed, string userId, bool isAdmin);
+
+        // Screenshot gallery (up to 10 per game)
+        Task<ServiceResult> AddScreenshotsAsync(Guid gameId, IList<IFormFile> files, string userId, bool isAdmin);
+        ServiceResult DeleteScreenshot(Guid gameId, string url, string userId, bool isAdmin);
     }
 }
